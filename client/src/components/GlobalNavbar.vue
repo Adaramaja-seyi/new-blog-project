@@ -3,6 +3,7 @@
     <div class="container">
       <!-- Brand/Logo -->
       <router-link class="navbar-brand" to="/">
+        <i class="bi bi-journal-text text-primary-blue me-2"></i>
         Blog Platform
       </router-link>
       
@@ -44,34 +45,54 @@
                 Register
               </router-link>
             </li>
+            <!-- Temporary login button for testing -->
+            <li class="nav-item">
+              <button @click="simulateAuthorLogin" class="btn btn-outline-primary btn-sm">
+                Login as Author (Test)
+              </button>
+            </li>
           </template>
           
           <!-- Show when user IS authenticated -->
           <template v-else>
+            <!-- Dashboard link for authors -->
+            <li v-if="isAuthor" class="nav-item">
+              <router-link class="nav-link" to="/dashboard">
+                <i class="bi bi-speedometer2 me-1"></i>
+                Dashboard
+              </router-link>
+            </li>
+            
             <li class="nav-item dropdown">
               <a 
-                class="nav-link dropdown-toggle" 
+                class="nav-link dropdown-toggle d-flex align-items-center" 
                 href="#" 
                 role="button" 
                 data-bs-toggle="dropdown" 
                 aria-expanded="false"
               >
+                <div class="user-avatar me-2">
+                  <i class="bi bi-person-circle"></i>
+                </div>
                 {{ user?.name || 'User' }}
               </a>
-              <ul class="dropdown-menu">
-                <li>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li v-if="isAuthor">
                   <router-link class="dropdown-item" to="/dashboard">
+                    <i class="bi bi-speedometer2 me-2"></i>
                     Dashboard
                   </router-link>
                 </li>
                 <li>
                   <router-link class="dropdown-item" to="/profile">
+                    <i class="bi bi-person me-2"></i>
                     Profile
                   </router-link>
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                  <a class="dropdown-item" href="#" @click.prevent="handleLogout">
+                  <a class="dropdown-item text-danger" href="#" @click.prevent="handleLogout">
+                    <i class="bi bi-box-arrow-right me-2"></i>
                     Logout
                   </a>
                 </li>
@@ -85,68 +106,141 @@
 </template>
 
 <script>
-import { blogAPI } from '../api.js'
-
 export default {
   name: 'GlobalNavbar',
   data() {
     return {
-      isAuthenticated: false, // TODO: Connect to auth state management
-      user: null // TODO: Connect to user state management
+      isAuthenticated: false,
+      user: null
+    }
+  },
+  computed: {
+    isAuthor() {
+      return this.user?.role === 'author'
     }
   },
   mounted() {
-    // TODO: Check authentication status on component mount
     this.checkAuthStatus()
   },
   methods: {
-    async checkAuthStatus() {
-      try {
-        // TODO: Implement authentication check
-        // const response = await blogAPI.getProfile()
-        // this.isAuthenticated = true
-        // this.user = response.data
-      } catch (error) {
-        this.isAuthenticated = false
-        this.user = null
+    checkAuthStatus() {
+      const user = localStorage.getItem('user')
+      const token = localStorage.getItem('token')
+      
+      if (user && token) {
+        try {
+          this.user = JSON.parse(user)
+          this.isAuthenticated = true
+        } catch (error) {
+          this.clearAuth()
+        }
+      } else {
+        this.clearAuth()
       }
     },
-    async handleLogout() {
-      try {
-        // TODO: Implement logout functionality
-        // await blogAPI.logout()
-        // this.isAuthenticated = false
-        // this.user = null
-        // this.$router.push('/login')
-      } catch (error) {
-        console.error('Logout failed:', error)
-      }
+    clearAuth() {
+      this.isAuthenticated = false
+      this.user = null
+      localStorage.removeItem('user')
+      localStorage.removeItem('token')
+    },
+    handleLogout() {
+      this.clearAuth()
+      this.$router.push('/login')
+    },
+    simulateAuthorLogin() {
+      this.user = {
+        id: 'temp-author-id',
+        name: 'Test Author',
+        email: 'test@example.com',
+        role: 'author'
+      };
+      this.isAuthenticated = true;
+      localStorage.setItem('user', JSON.stringify(this.user));
+      localStorage.setItem('token', 'temp-token'); // In a real app, this would be a JWT
+      this.$router.push('/dashboard');
     }
   }
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .navbar {
   padding: 1rem 0;
-}
-
-.navbar-brand {
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.dropdown-menu {
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow);
-}
-
-.dropdown-item {
-  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
   
-  &:hover {
-    background-color: var(--surface-color);
-    color: var(--primary-color);
+  .navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-decoration: none;
+    
+    &:hover {
+      color: var(--primary-blue);
+    }
+  }
+  
+  .nav-link {
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: color 0.2s ease;
+    
+    &:hover {
+      color: var(--primary-blue);
+    }
+    
+    &.active {
+      color: var(--primary-blue);
+    }
+  }
+  
+  .user-avatar {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    i {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+    }
+  }
+  
+  .dropdown-menu {
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-md);
+    border-radius: 0.5rem;
+    margin-top: 0.5rem;
+    
+    .dropdown-item {
+      color: var(--text-primary);
+      padding: 0.5rem 1rem;
+      
+      &:hover {
+        background-color: var(--bg-secondary);
+        color: var(--primary-blue);
+      }
+      
+      &.text-danger:hover {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .navbar {
+    .navbar-brand {
+      font-size: 1.25rem;
+    }
+    
+    .nav-link {
+      padding: 0.5rem 0;
+    }
   }
 }
 </style>

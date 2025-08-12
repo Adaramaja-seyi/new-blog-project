@@ -1,11 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// Import view components (these will be created)
+// Import view components
 import Home from '../views/Home.vue'
 import PostDetail from '../views/PostDetail.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
-import Dashboard from '../views/Dashboard.vue'
+import DashboardWrapper from '../components/DashboardWrapper.vue'
+import DashboardHome from '../views/DashboardHome.vue'
 import Profile from '../views/Profile.vue'
 
 const routes = [
@@ -35,12 +36,113 @@ const routes = [
     },
     {
         path: '/dashboard',
-        name: 'Dashboard',
-        component: Dashboard,
+        component: DashboardWrapper,
         meta: {
-            title: 'Dashboard',
-            requiresAuth: true // Add authentication guard
-        }
+            requiresAuth: true,
+            requiresAuthor: true
+        },
+        children: [
+            {
+                path: '',
+                name: 'Dashboard',
+                component: DashboardHome,
+                meta: {
+                    title: 'Dashboard Overview',
+                    requiresAuth: true,
+                    requiresAuthor: true
+                }
+            },
+            {
+                path: 'home',
+                name: 'DashboardHome',
+                component: DashboardHome,
+                meta: {
+                    title: 'Dashboard Home',
+                    requiresAuth: true,
+                    requiresAuthor: true
+                }
+            },
+            {
+                path: 'posts',
+                name: 'DashboardPosts',
+                component: () => import('../views/DashboardPosts.vue'),
+                meta: {
+                    title: 'My Posts',
+                    requiresAuth: true,
+                    requiresAuthor: true
+                }
+            },
+            {
+                path: 'drafts',
+                name: 'DashboardDrafts',
+                component: () => import('../views/DashboardPosts.vue'),
+                meta: {
+                    title: 'Drafts',
+                    requiresAuth: true,
+                    requiresAuthor: true
+                }
+            },
+            {
+                path: 'create',
+                name: 'CreatePost',
+                component: () => import('../views/CreatePost.vue'),
+                meta: {
+                    title: 'Create Post',
+                    requiresAuth: true,
+                    requiresAuthor: true
+                }
+            },
+            {
+                path: 'edit/:id',
+                name: 'EditPost',
+                component: () => import('../views/CreatePost.vue'),
+                meta: {
+                    title: 'Edit Post',
+                    requiresAuth: true,
+                    requiresAuthor: true
+                }
+            },
+            {
+                path: 'comments',
+                name: 'DashboardComments',
+                component: () => import('../views/DashboardComments.vue'),
+                meta: {
+                    title: 'Comments',
+                    requiresAuth: true,
+                    requiresAuthor: true
+                }
+            },
+            {
+                path: 'analytics',
+                name: 'DashboardAnalytics',
+                component: DashboardHome,
+                meta: {
+                    title: 'Analytics',
+                    requiresAuth: true,
+                    requiresAuthor: true
+                }
+            },
+            {
+                path: 'settings',
+                name: 'DashboardSettings',
+                component: Profile,
+                meta: {
+                    title: 'Settings',
+                    requiresAuth: true,
+                    requiresAuthor: true
+                }
+            },
+            {
+                path: 'profile',
+                name: 'DashboardProfile',
+                component: Profile,
+                meta: {
+                    title: 'Profile Settings',
+                    requiresAuth: true,
+                    requiresAuthor: true
+                }
+            }
+        ]
     },
     {
         path: '/profile',
@@ -48,7 +150,7 @@ const routes = [
         component: Profile,
         meta: {
             title: 'Profile',
-            requiresAuth: true // Add authentication guard
+            requiresAuth: true
         }
     }
 ]
@@ -65,12 +167,25 @@ router.beforeEach((to, from, next) => {
 
     // Check if route requires authentication
     if (to.meta.requiresAuth) {
-        // TODO: Implement authentication check
-        // const isAuthenticated = checkAuthStatus()
-        // if (!isAuthenticated) {
-        //   next('/login')
-        //   return
-        // }
+        const user = localStorage.getItem('user')
+        if (!user) {
+            next('/login')
+            return
+        }
+
+        // Check if route requires author role
+        if (to.meta.requiresAuthor) {
+            try {
+                const userData = JSON.parse(user)
+                if (userData.role !== 'author') {
+                    next('/')
+                    return
+                }
+            } catch {
+                next('/login')
+                return
+            }
+        }
     }
 
     next()
