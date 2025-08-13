@@ -19,11 +19,11 @@ class LikeController extends Controller
                 'post_id' => 'required|exists:posts,id'
             ]);
 
-            $post = Post::findOrFail($request->post_id);
+            $post = Post::findOrFail($request->input('post_id'));
             $userId = Auth::id();
 
             // Check if already liked
-            $existingLike = Like::where('post_id', $post->id)
+            $existingLike = Like::where('post_id', $post->getKey())
                 ->where('user_id', $userId)
                 ->first();
 
@@ -35,7 +35,7 @@ class LikeController extends Controller
             }
 
             $like = Like::create([
-                'post_id' => $post->id,
+                'post_id' => $post->getKey(),
                 'user_id' => $userId
             ]);
 
@@ -62,10 +62,10 @@ class LikeController extends Controller
                 'post_id' => 'required|exists:posts,id'
             ]);
 
-            $post = Post::findOrFail($request->post_id);
+            $post = Post::findOrFail($request->input('post_id'));
             $userId = Auth::id();
 
-            $like = Like::where('post_id', $post->id)
+            $like = Like::where('post_id', $post->getKey())
                 ->where('user_id', $userId)
                 ->first();
 

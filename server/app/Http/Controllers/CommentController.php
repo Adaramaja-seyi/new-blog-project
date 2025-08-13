@@ -41,10 +41,11 @@ class CommentController extends Controller
         }
 
         $comment = Comment::create([
-            'content' => $request->content,
+            'content' => $request->input('content'),
             'user_id' => Auth::id(),
             'post_id' => $post->id,
-            'parent_id' => $request->parent_id
+            'parent_id' => $request->input('parent_id'),
+            'status' => 'pending'  // Set default status
         ]);
 
         $comment->load('user');
@@ -71,7 +72,7 @@ class CommentController extends Controller
         ]);
 
         $comment = Comment::where('user_id', Auth::id())->findOrFail($id);
-        $comment->update(['content' => $request->content]);
+        $comment->update(['content' => $request->input('content')]);
 
         return response()->json([
             'comment' => $comment,
@@ -104,16 +105,52 @@ class CommentController extends Controller
 
     public function approve($id)
     {
-        // Example: Only admin can approve
-        if (!Auth::user() || !Auth::user()->is_admin) {
+        $comment = Comment::findOrFail($id);
+
+        // Check if user owns the post that this comment belongs to
+        if ($comment->post->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $comment = Comment::findOrFail($id);
-        $comment->update(['is_approved' => true]);
+        $comment->update(['status' => 'approved']);
 
         return response()->json([
-            'message' => 'Comment approved successfully'
+            'message' => 'Comment approved successfully',
+            'comment' => $comment->load(['user', 'post'])
+        ]);
+    }
+
+    public function reject($id)
+    {
+        $comment = Comment::findOrFail($id);
+
+        // Check if user owns the post that this comment belongs to
+        if ($comment->post->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $comment->update(['status' => 'pending']);
+
+        return response()->json([
+            'message' => 'Comment rejected successfully',
+            'comment' => $comment->load(['user', 'post'])
+        ]);
+    }
+
+    public function markAsSpam($id)
+    {
+        $comment = Comment::findOrFail($id);
+
+        // Check if user owns the post that this comment belongs to
+        if ($comment->post->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $comment->update(['status' => 'spam']);
+
+        return response()->json([
+            'message' => 'Comment marked as spam successfully',
+            'comment' => $comment->load(['user', 'post'])
         ]);
     }
 }
