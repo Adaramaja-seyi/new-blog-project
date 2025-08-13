@@ -3,7 +3,14 @@
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border" role="status">
-        <span class="visually-hidden">Loading...</span>
+        <span class="visually-      loading: true,
+      error: false,
+      newComment: '',
+      submitting: false,
+      deleting: false,
+      likingPost: false,
+      isLiked: false,
+      auth: null">Loading...</span>
       </div>
     </div>
     
@@ -28,6 +35,39 @@
             <span>{{ formatDate(post.created_at) }}</span>
             <span v-if="post.category" class="mx-2">•</span>
             <span v-if="post.category" class="badge bg-secondary">{{ post.category }}</span>
+          </div>
+          
+          <!-- Post Actions -->
+          <div class="post-actions mb-4">
+            <div class="d-flex align-items-center gap-3">
+              <!-- Like Button -->
+              <button 
+                v-if="isAuthenticated" 
+                @click="toggleLike"
+                :class="['btn', isLiked ? 'btn-danger' : 'btn-outline-danger']"
+                :disabled="likingPost"
+              >
+                <i class="bi bi-heart-fill me-1" v-if="isLiked"></i>
+                <i class="bi bi-heart me-1" v-else></i>
+                {{ post.likes_count || 0 }}
+              </button>
+              
+              <!-- Like button for unauthenticated users -->
+              <router-link 
+                v-else
+                :to="{ path: '/login', query: { redirect: $route.fullPath } }"
+                :class="['btn btn-outline-danger']"
+              >
+                <i class="bi bi-heart me-1"></i>
+                {{ post.likes_count || 0 }}
+              </router-link>
+              
+              <!-- Views -->
+              <span class="text-muted">
+                <i class="bi bi-eye me-1"></i>
+                {{ post.views || 0 }} views
+              </span>
+            </div>
           </div>
         </header>
         
@@ -58,6 +98,27 @@
                   {{ submitting ? 'Posting...' : 'Post Comment' }}
                 </button>
               </form>
+            </div>
+          </div>
+
+          <!-- Login prompt for unauthenticated users -->
+          <div v-else class="card mb-4">
+            <div class="card-body text-center">
+              <h5 class="card-title">Join the Conversation</h5>
+              <p class="text-muted">Please log in to comment on this post.</p>
+              <router-link 
+                :to="{ path: '/login', query: { redirect: $route.fullPath } }" 
+                class="btn btn-primary"
+              >
+                Login to Comment
+              </router-link>
+              <span class="mx-2">or</span>
+              <router-link 
+                :to="{ path: '/register', query: { redirect: $route.fullPath } }" 
+                class="btn btn-outline-primary"
+              >
+                Sign Up
+              </router-link>
             </div>
           </div>
           
@@ -133,6 +194,7 @@
 
 <script>
 import { blogAPI } from '../api.js'
+import { useAuth } from '../stores/auth.js'
 
 export default {
   name: 'PostDetail',
@@ -141,13 +203,25 @@ export default {
       post: null,
       comments: [],
       relatedPosts: [],
-      loading: true,
+      loading: false,
       error: false,
       newComment: '',
       submitting: false,
       deleting: false,
-      isAuthenticated: false // TODO: Connect to auth state
+      auth: null
     }
+  },
+  computed: {
+    isAuthenticated() {
+      if (!this.auth) return false;
+      return this.auth.isAuthenticated.value || false
+    },
+    currentUser() {
+      return this.auth?.user || null
+    }
+  },
+  created() {
+    this.auth = useAuth()
   },
   mounted() {
     this.fetchPost()
@@ -289,9 +363,29 @@ export default {
       }
     },
     canDeleteComment(comment) {
-      // TODO: Check if current user can delete this comment
-      // return comment.user_id === currentUser.id || currentUser.isAdmin
-      return false // For now, no one can delete
+      // Check if current user can delete this comment
+      return this.currentUser && (comment.user_id === this.currentUser.id)
+    },
+    async toggleLike() {
+      if (!this.isAuthenticated) return;
+      
+      try {
+        this.likingPost = true;
+        // TODO: Implement API call to toggle like
+        // const response = await blogAPI.toggleLike(this.post.id)
+        
+        // Mock implementation
+        this.isLiked = !this.isLiked;
+        if (this.isLiked) {
+          this.post.likes_count = (this.post.likes_count || 0) + 1;
+        } else {
+          this.post.likes_count = Math.max((this.post.likes_count || 0) - 1, 0);
+        }
+      } catch (error) {
+        console.error('Error toggling like:', error);
+      } finally {
+        this.likingPost = false;
+      }
     },
     formatDate(dateString) {
       return new Date(dateString).toLocaleDateString('en-US', {

@@ -150,10 +150,10 @@ export default {
     handleLogout() {
       // Clear user data
       localStorage.removeItem('user')
-      localStorage.removeItem('token')
+      localStorage.removeItem('auth_token')
       
       // Redirect to login
-      this.$router.push('/login')
+      this.$router.push('/')
       
       // Emit logout event
       this.$emit('logout')

@@ -1,72 +1,65 @@
 <script>
-import GlobalNavbar from './components/GlobalNavbar.vue'
-import Footer from './components/Footer.vue'
-import { useAuth } from './stores/auth.js'
+import GlobalNavbar from "./components/GlobalNavbar.vue";
+import Footer from "./components/Footer.vue";
+import { useAuth } from "./stores/auth.js";
 
 export default {
-  name: 'App',
+  name: "App",
   components: {
     GlobalNavbar,
-    Footer
+    Footer,
   },
   data() {
     return {
-      authInitialized: false
-    }
+      authInitialized: false,
+    };
   },
   computed: {
     isDashboardRoute() {
-      return this.$route.path.startsWith('/dashboard')
+      return this.$route.path.startsWith("/dashboard");
+    },
+    /*************  ✨ Windsurf Command ⭐  *************/
+    /**
+     * Returns true if the current route is either /login or /register
+     * @returns {boolean}
+     */
+    /*******  ec33afa5-addf-49bc-9760-936d2c43e236  *******/
+    isAuthRoute() {
+      return this.$route.path === "/login" || this.$route.path === "/register";
     },
     isAuthenticated() {
-      const auth = useAuth()
-      return auth.isAuthenticated.value
-    }
+      const auth = useAuth();
+      return auth.isAuthenticated.value;
+    },
   },
   async mounted() {
     // Initialize authentication on app start
-    const auth = useAuth()
-    await auth.initializeAuth()
-    this.authInitialized = true
-  }
-}
+    const auth = useAuth();
+    await auth.initializeAuth();
+    this.authInitialized = true;
+  },
+};
 </script>
 
 <template>
   <div id="app">
-    <!-- Show regular layout for non-dashboard routes -->
-    <template v-if="!isDashboardRoute">
-      <!-- Global Navigation Bar -->
+    <!-- Hide navbar and footer on login/register pages -->
+    <template v-if="isAuthRoute">
+      <router-view />
+    </template>
+    <!-- Hide navbar and footer on dashboard routes, only show if authenticated -->
+    <template v-else-if="isDashboardRoute">
+      <!-- <template v-if="isAuthenticated"> -->
+        <router-view />
+      <!-- </template> -->
+    </template>
+    <!-- Show navbar and footer everywhere else, regardless of authentication -->
+    <template v-else>
       <GlobalNavbar />
-      
-      <!-- Main Content Area -->
       <main class="main-content">
         <router-view />
       </main>
-      
-      <!-- Global Footer -->
       <Footer />
-    </template>
-    
-    <!-- Show dashboard layout for authenticated users -->
-    <template v-else-if="isAuthenticated">
-      <router-view />
-    </template>
-    
-    <!-- Show loading or redirect for unauthenticated users -->
-    <template v-else>
-      <div class="loading-container">
-        <div class="container">
-          <div class="row justify-content-center">
-            <div class="col-md-6 text-center">
-              <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <p class="mt-3">Loading...</p>
-            </div>
-          </div>
-        </div>
-      </div>
     </template>
   </div>
 </template>
