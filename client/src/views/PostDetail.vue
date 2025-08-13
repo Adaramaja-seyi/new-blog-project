@@ -24,12 +24,12 @@
         <header class="mb-4">
           <h1 class="display-5 mb-3">{{ post.title }}</h1>
           <div class="d-flex align-items-center text-muted mb-4">
-            <span>By {{ post.author }}</span>
+            <span>By {{ post.user?.name || post.author || "Unknown Author" }}</span>
             <span class="mx-2">•</span>
             <span>{{ formatDate(post.created_at) }}</span>
             <span v-if="post.category" class="mx-2">•</span>
             <span v-if="post.category" class="badge bg-secondary">{{
-              post.category
+              post.category.name || post.category
             }}</span>
           </div>
 
@@ -123,7 +123,9 @@
             <div v-for="comment in comments" :key="comment.id" class="card mb-3">
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                  <h6 class="card-subtitle mb-1">{{ comment.author }}</h6>
+                  <h6 class="card-subtitle mb-1">
+                    {{ comment.author_name || comment.author || "Anonymous" }}
+                  </h6>
                   <small class="text-muted">{{ formatDate(comment.created_at) }}</small>
                 </div>
                 <p class="card-text">{{ comment.content }}</p>
@@ -156,8 +158,10 @@
             <h5 class="mb-0">About the Author</h5>
           </div>
           <div class="card-body">
-            <h6>{{ post.author }}</h6>
-            <p class="text-muted">{{ post.author_bio || "No bio available." }}</p>
+            <h6>{{ post.user?.name || post.author || "Unknown Author" }}</h6>
+            <p class="text-muted">
+              {{ post.user?.bio || post.author_bio || "No bio available." }}
+            </p>
           </div>
         </div>
 
@@ -169,7 +173,7 @@
             <ul class="list-unstyled">
               <li v-for="relatedPost in relatedPosts" :key="relatedPost.id" class="mb-3">
                 <router-link
-                  :to="{ name: 'PostDetail', params: { id: relatedPost.id } }"
+                  :to="{ name: 'PostDetail', params: { slug: relatedPost.slug } }"
                   class="text-decoration-none"
                 >
                   <h6 class="mb-1">{{ relatedPost.title }}</h6>
@@ -202,6 +206,8 @@ export default {
       newComment: "",
       submitting: false,
       deleting: false,
+      likingPost: false,
+      isLiked: false,
       auth: null,
     };
   },
@@ -221,39 +227,16 @@ export default {
     this.fetchPost();
     this.fetchComments();
     this.fetchRelatedPosts();
+    this.checkLikeStatus();
   },
   methods: {
     async fetchPost() {
       try {
         this.loading = true;
-        const postId = this.$route.params.id;
+        const postSlug = this.$route.params.slug;
 
-        // TODO: Implement API call to fetch post
-        // const response = await blogAPI.getPost(postId)
-        // this.post = response.data
-
-        // Mock data for now
-        this.post = {
-          id: postId,
-          title: "Getting Started with Vue 3",
-          content: `
-            <p>Vue 3 is the latest version of the popular JavaScript framework that makes building user interfaces simple and efficient.</p>
-            <p>In this post, we'll explore the key features and improvements that Vue 3 brings to the table.</p>
-            <h2>Key Features</h2>
-            <ul>
-              <li>Composition API</li>
-              <li>Better TypeScript support</li>
-              <li>Improved performance</li>
-              <li>Smaller bundle size</li>
-            </ul>
-            <p>Stay tuned for more detailed tutorials on each of these features!</p>
-          `,
-          author: "John Doe",
-          author_bio:
-            "Full-stack developer with 5+ years of experience in Vue.js and modern web technologies.",
-          category: "Technology",
-          created_at: "2024-01-15T10:00:00Z",
-        };
+        const response = await blogAPI.getPost(postSlug);
+        this.post = response.data;
       } catch (error) {
         console.error("Error fetching post:", error);
         this.error = true;
@@ -263,56 +246,53 @@ export default {
     },
     async fetchComments() {
       try {
-        const postId = this.$route.params.id;
+        const postSlug = this.$route.params.slug;
 
-        // TODO: Implement API call to fetch comments
-        // const response = await blogAPI.getComments(postId)
-        // this.comments = response.data
-
-        // Mock data for now
-        this.comments = [
-          {
-            id: 1,
-            content: "Great article! Vue 3 is really impressive.",
-            author: "Jane Smith",
-            created_at: "2024-01-15T11:00:00Z",
-            user_id: 2,
-          },
-          {
-            id: 2,
-            content: "Looking forward to more Vue 3 tutorials!",
-            author: "Mike Johnson",
-            created_at: "2024-01-15T12:30:00Z",
-            user_id: 3,
-          },
-        ];
+        const response = await blogAPI.getPostComments(postSlug);
+        this.comments = response.data;
       } catch (error) {
         console.error("Error fetching comments:", error);
       }
     },
     async fetchRelatedPosts() {
       try {
-        const postId = this.$route.params.id;
+        const postSlug = this.$route.params.slug;
 
-        // TODO: Implement API call to fetch related posts
-        // const response = await blogAPI.getRelatedPosts(postId)
-        // this.relatedPosts = response.data
-
-        // Mock data for now
-        this.relatedPosts = [
-          {
-            id: 2,
-            title: "Bootstrap 5 Best Practices",
-            created_at: "2024-01-14T15:30:00Z",
-          },
-          {
-            id: 3,
-            title: "Modern JavaScript Features",
-            created_at: "2024-01-13T09:15:00Z",
-          },
-        ];
+        const response = await blogAPI.getRelatedPosts(postSlug);
+        this.relatedPosts = response.data;
       } catch (error) {
         console.error("Error fetching related posts:", error);
+      }
+    },
+    async checkLikeStatus() {
+      if (!this.isAuthenticated || !this.post) return;
+
+      try {
+        const response = await blogAPI.checkLikeStatus(this.post.id);
+        this.isLiked = response.data.is_liked;
+      } catch (error) {
+        console.error("Error checking like status:", error);
+      }
+    },
+    async toggleLike() {
+      if (!this.isAuthenticated || this.likingPost) return;
+
+      try {
+        this.likingPost = true;
+
+        if (this.isLiked) {
+          await blogAPI.unlikePost(this.post.id);
+          this.post.likes_count = Math.max(0, (this.post.likes_count || 0) - 1);
+          this.isLiked = false;
+        } else {
+          await blogAPI.likePost(this.post.id);
+          this.post.likes_count = (this.post.likes_count || 0) + 1;
+          this.isLiked = true;
+        }
+      } catch (error) {
+        console.error("Error toggling like:", error);
+      } finally {
+        this.likingPost = false;
       }
     },
     async submitComment() {
@@ -320,67 +300,43 @@ export default {
 
       try {
         this.submitting = true;
-        const postId = this.$route.params.id;
+        const postId = this.post.id;
 
-        // TODO: Implement API call to create comment
-        // const response = await blogAPI.createComment(postId, { content: this.newComment })
-        // this.comments.unshift(response.data)
-
-        // Mock: add comment to list
-        this.comments.unshift({
-          id: Date.now(),
+        const response = await blogAPI.createComment(postId, {
           content: this.newComment,
-          author: "Current User", // TODO: Get from auth state
-          created_at: new Date().toISOString(),
-          user_id: 1, // TODO: Get from auth state
         });
 
+        this.comments.unshift(response.data);
         this.newComment = "";
       } catch (error) {
         console.error("Error posting comment:", error);
+        alert("Failed to post comment. Please try again.");
       } finally {
         this.submitting = false;
       }
     },
     async deleteComment(commentId) {
+      if (!confirm("Are you sure you want to delete this comment?")) return;
+
       try {
         this.deleting = true;
 
-        // TODO: Implement API call to delete comment
-        // await blogAPI.deleteComment(commentId)
-
-        // Remove from local list
-        this.comments = this.comments.filter((c) => c.id !== commentId);
+        await blogAPI.deleteComment(commentId);
+        this.comments = this.comments.filter((comment) => comment.id !== commentId);
       } catch (error) {
         console.error("Error deleting comment:", error);
+        alert("Failed to delete comment. Please try again.");
       } finally {
         this.deleting = false;
       }
     },
     canDeleteComment(comment) {
-      // Check if current user can delete this comment
-      return this.currentUser && comment.user_id === this.currentUser.id;
-    },
-    async toggleLike() {
-      if (!this.isAuthenticated) return;
-
-      try {
-        this.likingPost = true;
-        // TODO: Implement API call to toggle like
-        // const response = await blogAPI.toggleLike(this.post.id)
-
-        // Mock implementation
-        this.isLiked = !this.isLiked;
-        if (this.isLiked) {
-          this.post.likes_count = (this.post.likes_count || 0) + 1;
-        } else {
-          this.post.likes_count = Math.max((this.post.likes_count || 0) - 1, 0);
-        }
-      } catch (error) {
-        console.error("Error toggling like:", error);
-      } finally {
-        this.likingPost = false;
-      }
+      if (!this.isAuthenticated) return false;
+      // User can delete their own comments or if they're the post author
+      return (
+        comment.user_id === this.currentUser?.id ||
+        this.post?.user_id === this.currentUser?.id
+      );
     },
     formatDate(dateString) {
       return new Date(dateString).toLocaleDateString("en-US", {

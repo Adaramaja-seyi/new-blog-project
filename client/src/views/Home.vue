@@ -7,13 +7,13 @@
           <div class="row align-items-center">
             <div class="col-lg-6">
               <div class="hero-text">
-                <div class="category-tag mb-3">{{ featuredPost.category || 'Featured' }}</div>
+                <div class="category-tag mb-3">{{ featuredPost.category?.name || 'Featured' }}</div>
                 <h1 class="hero-title">{{ featuredPost.title }}</h1>
                 <p class="hero-subtitle">{{ featuredPost.excerpt }}</p>
                 <div class="hero-meta mb-4">
                   <span class="hero-author">
                     <i class="bi bi-person-circle me-1"></i>
-                    {{ featuredPost.author }}
+                    {{ featuredPost.user?.name || featuredPost.author || 'Unknown Author' }}
                   </span>
                   <span class="hero-date">
                     <i class="bi bi-calendar3 me-1"></i>
@@ -21,7 +21,7 @@
                   </span>
                 </div>
                 <router-link 
-                  :to="{ name: 'PostDetail', params: { id: featuredPost.id } }"
+                  :to="{ name: 'PostDetail', params: { slug: featuredPost.slug } }"
                   class="btn btn-primary btn-lg"
                 >
                   Read More
@@ -181,8 +181,9 @@ export default {
         const query = this.searchQuery.toLowerCase()
         filtered = filtered.filter(post => 
           post.title.toLowerCase().includes(query) ||
-          post.excerpt.toLowerCase().includes(query) ||
-          post.author.toLowerCase().includes(query)
+          (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
+          (post.user?.name && post.user.name.toLowerCase().includes(query)) ||
+          (post.author && post.author.toLowerCase().includes(query))
         )
       }
       
@@ -220,121 +221,47 @@ export default {
     async fetchPosts() {
       try {
         this.loading = true
-        // TODO: Implement API call to fetch posts
-        // const response = await blogAPI.getPosts()
-        // this.posts = response.data.posts
-        // this.featuredPost = this.posts[0] // Set first post as featured
+        const filters = {}
+        if (this.searchQuery) filters.search = this.searchQuery
+        if (this.selectedCategory) filters.category_id = this.selectedCategory
         
-        // Mock data for now
-        this.posts = [
-          {
-            id: 1,
-            title: 'Getting Started with Vue 3: A Comprehensive Guide',
-            excerpt: 'Learn the basics of Vue 3 and how to build modern web applications with the Composition API, improved performance, and better TypeScript support.',
-            author: 'John Doe',
-            category: 'Technology',
-            category_id: 1,
-            featured_image: 'https://images.unsplash.com/photo-1555066932-e78dd8fb77bb?w=800',
-            created_at: '2024-01-15T10:00:00Z',
-            views: 1250,
-            comments_count: 23,
-            likes_count: 89
-          },
-          {
-            id: 2,
-            title: 'Bootstrap 5 Best Practices for Modern Web Design',
-            excerpt: 'Discover the best practices for using Bootstrap 5 in your projects, including responsive design, custom theming, and performance optimization.',
-            author: 'Jane Smith',
-            category: 'Design',
-            category_id: 2,
-            featured_image: 'https://images.unsplash.com/photo-1547658719-da2b51169166?w=800',
-            created_at: '2024-01-14T15:30:00Z',
-            views: 890,
-            comments_count: 15,
-            likes_count: 67
-          },
-          {
-            id: 3,
-            title: 'The Future of Web Development: Trends to Watch in 2024',
-            excerpt: 'Explore the latest trends in web development, from AI-powered tools to new frameworks and technologies that will shape the industry.',
-            author: 'Mike Johnson',
-            category: 'Development',
-            category_id: 3,
-            featured_image: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800',
-            created_at: '2024-01-13T09:15:00Z',
-            views: 2100,
-            comments_count: 45,
-            likes_count: 156
-          },
-          {
-            id: 4,
-            title: 'Building Scalable APIs with Node.js and Express',
-            excerpt: 'Learn how to build robust and scalable APIs using Node.js and Express, including authentication, validation, and database integration.',
-            author: 'Sarah Wilson',
-            category: 'Development',
-            category_id: 3,
-            featured_image: 'https://images.unsplash.com/photo-1555066932-e78dd8fb77bb?w=800',
-            created_at: '2024-01-12T14:20:00Z',
-            views: 980,
-            comments_count: 18,
-            likes_count: 72
-          },
-          {
-            id: 5,
-            title: 'CSS Grid vs Flexbox: When to Use Each',
-            excerpt: 'Understand the differences between CSS Grid and Flexbox, and learn when to use each layout system for optimal web design.',
-            author: 'Alex Brown',
-            category: 'Design',
-            category_id: 2,
-            featured_image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
-            created_at: '2024-01-11T11:45:00Z',
-            views: 750,
-            comments_count: 12,
-            likes_count: 54
-          },
-          {
-            id: 6,
-            title: 'Introduction to React Hooks: A Beginner\'s Guide',
-            excerpt: 'Master React Hooks with this comprehensive guide covering useState, useEffect, useContext, and custom hooks for modern React development.',
-            author: 'Emily Davis',
-            category: 'Technology',
-            category_id: 1,
-            featured_image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800',
-            created_at: '2024-01-10T16:30:00Z',
-            views: 1650,
-            comments_count: 28,
-            likes_count: 98
-          }
-        ]
+        const response = await blogAPI.getPosts(filters)
+        this.posts = response.data
         
-        this.featuredPost = this.posts[0] // Set first post as featured
+        // Set the most recent or most viewed post as featured
+        if (this.posts.length > 0) {
+          this.featuredPost = this.posts.find(post => post.is_featured) || this.posts[0]
+        }
       } catch (error) {
         console.error('Error fetching posts:', error)
+        // Fallback to empty array on error
+        this.posts = []
+        this.featuredPost = null
       } finally {
         this.loading = false
       }
     },
     async fetchCategories() {
       try {
-        // TODO: Implement API call to fetch categories
-        // const response = await blogAPI.getCategories()
-        // this.categories = response.data
-        
-        // Mock data for now
-        this.categories = [
-          { id: 1, name: 'Technology' },
-          { id: 2, name: 'Design' },
-          { id: 3, name: 'Development' }
-        ]
+        const response = await blogAPI.getCategories()
+        this.categories = response.data
       } catch (error) {
         console.error('Error fetching categories:', error)
+        // Fallback to empty array on error
+        this.categories = []
       }
     },
     handleSearch() {
       this.currentPage = 1 // Reset to first page when searching
+      // Debounce search to avoid too many API calls
+      clearTimeout(this.searchTimeout)
+      this.searchTimeout = setTimeout(() => {
+        this.fetchPosts()
+      }, 500)
     },
     handleCategoryChange() {
       this.currentPage = 1 // Reset to first page when changing category
+      this.fetchPosts()
     },
     changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
@@ -349,6 +276,7 @@ export default {
       this.searchQuery = ''
       this.selectedCategory = ''
       this.currentPage = 1
+      this.fetchPosts()
     },
     formatDate(dateString) {
       return new Date(dateString).toLocaleDateString('en-US', {

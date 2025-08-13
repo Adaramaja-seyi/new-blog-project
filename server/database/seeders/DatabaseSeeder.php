@@ -19,11 +19,5 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
-
-        // Seed categories and tags
-        $this->call([
-            CategorySeeder::class,
-            TagSeeder::class,
-        ]);
     }
 }

@@ -23,7 +23,7 @@ const routes = [
     meta: { title: "Blog Platform - Feed" },
   },
   {
-    path: "/post/:id",
+    path: "/post/:slug",
     name: "PostDetail",
     component: PostDetail,
     meta: { title: "Blog Post" },

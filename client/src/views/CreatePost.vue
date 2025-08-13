@@ -83,45 +83,64 @@
               <label class="form-label">Category *</label>
               <select 
                 class="form-select"
-                v-model="post.category"
-                :class="{ 'is-invalid': errors.category }"
+                v-model="post.category_id"
+                :class="{ 'is-invalid': errors.category_id }"
               >
                 <option value="">Select a category</option>
-                <option value="Technology">Technology</option>
-                <option value="Development">Development</option>
-                <option value="Design">Design</option>
-                <option value="Business">Business</option>
-                <option value="Lifestyle">Lifestyle</option>
+                <option 
+                  v-for="category in categories" 
+                  :key="category.id" 
+                  :value="category.id"
+                >
+                  {{ category.name }}
+                </option>
               </select>
-              <div v-if="errors.category" class="invalid-feedback">
-                {{ errors.category }}
+              <div v-if="errors.category_id" class="invalid-feedback">
+                {{ errors.category_id }}
               </div>
             </div>
 
             <!-- Tags -->
             <div class="mb-3">
               <label class="form-label">Tags</label>
-              <input 
-                type="text" 
-                class="form-control"
-                v-model="tagInput"
-                placeholder="Add tags separated by commas..."
-                @keydown.enter.prevent="addTag"
-              />
+              <div class="tag-input-container">
+                <input 
+                  type="text" 
+                  class="form-control"
+                  v-model="tagInput"
+                  placeholder="Type to search tags..."
+                  @input="searchTags"
+                  @keydown.enter.prevent="addTagFromInput"
+                  @keydown.comma.prevent="addTagFromInput"
+                />
+                <!-- Tag suggestions -->
+                <div v-if="tagSuggestions.length > 0" class="tag-suggestions">
+                  <div 
+                    v-for="tag in tagSuggestions" 
+                    :key="tag.id"
+                    class="tag-suggestion"
+                    @click="addTag(tag)"
+                  >
+                    {{ tag.name }}
+                  </div>
+                </div>
+              </div>
               <div class="mt-2">
                 <span 
-                  v-for="tag in post.tags" 
-                  :key="tag"
-                  class="badge bg-light text-dark me-1 mb-1"
+                  v-for="tag in selectedTags" 
+                  :key="tag.id"
+                  class="badge me-1 mb-1"
+                  :style="{ backgroundColor: tag.color, color: 'white' }"
                 >
-                  {{ tag }}
+                  {{ tag.name }}
                   <i 
                     class="bi bi-x ms-1" 
-                    @click="removeTag(tag)"
+                    @click="removeTag(tag.id)"
                     style="cursor: pointer;"
                   ></i>
                 </span>
               </div>
+              <small class="text-muted">Press Enter or comma to add tags. Search existing tags or create new ones.</small>
             </div>
 
             <!-- Featured Image -->
@@ -212,6 +231,8 @@
 </template>
 
 <script>
+import { blogAPI } from '../api.js'
+
 export default {
   name: 'CreatePost',
   data() {
@@ -220,17 +241,20 @@ export default {
         title: '',
         excerpt: '',
         content: '',
-        category: '',
-        tags: [],
+        category_id: '',
         featured_image: '',
         status: 'draft',
-        seo_title: '',
+        meta_title: '',
         meta_description: ''
       },
+      selectedTags: [],
       tagInput: '',
+      tagSuggestions: [],
+      categories: [],
       errors: {},
       isEditing: false,
-      postId: null
+      postId: null,
+      loading: false
     }
   },
   mounted() {
@@ -240,24 +264,100 @@ export default {
       this.postId = this.$route.params.id
       this.loadPost()
     }
+    
+    // Load categories
+    this.loadCategories()
   },
   methods: {
+    async loadCategories() {
+      try {
+        const response = await blogAPI.getCategories()
+        this.categories = response.data || []
+      } catch (error) {
+        console.error('Error loading categories:', error)
+      }
+    },
+
+    async searchTags() {
+      if (this.tagInput.length > 1) {
+        try {
+          const response = await blogAPI.searchTags(this.tagInput)
+          this.tagSuggestions = (response.data || []).filter(tag => 
+            !this.selectedTags.find(selected => selected.id === tag.id)
+          )
+        } catch (error) {
+          console.error('Error searching tags:', error)
+          this.tagSuggestions = []
+        }
+      } else {
+        this.tagSuggestions = []
+      }
+    },
+
+    addTag(tag) {
+      if (!this.selectedTags.find(selected => selected.id === tag.id)) {
+        this.selectedTags.push(tag)
+      }
+      this.tagInput = ''
+      this.tagSuggestions = []
+    },
+
+    async addTagFromInput() {
+      if (this.tagInput.trim()) {
+        // Check if tag already exists in suggestions
+        const existingTag = this.tagSuggestions.find(tag => 
+          tag.name.toLowerCase() === this.tagInput.trim().toLowerCase()
+        )
+
+        if (existingTag) {
+          this.addTag(existingTag)
+        } else {
+          // Create new tag
+          try {
+            const response = await blogAPI.createTag({
+              name: this.tagInput.trim()
+            })
+            if (response.data) {
+              this.addTag(response.data)
+            }
+          } catch (error) {
+            console.error('Error creating tag:', error)
+            // Add as a temporary tag for now
+            const tempTag = {
+              id: Date.now(),
+              name: this.tagInput.trim(),
+              color: '#6c757d'
+            }
+            this.addTag(tempTag)
+          }
+        }
+      }
+    },
+
+    removeTag(tagId) {
+      this.selectedTags = this.selectedTags.filter(tag => tag.id !== tagId)
+    },
+
     async loadPost() {
       try {
-        // Mock data for editing
-        this.post = {
-          title: 'Getting Started with Vue 3',
-          excerpt: 'Learn the basics of Vue 3 and its new features...',
-          content: '# Getting Started with Vue 3\n\nVue 3 introduces many new features and improvements...',
-          category: 'Development',
-          tags: ['vue', 'javascript', 'frontend'],
-          featured_image: '/placeholder-image.jpg',
-          status: 'draft',
-          seo_title: 'Vue 3 Tutorial - Getting Started Guide',
-          meta_description: 'Learn how to get started with Vue 3, the latest version of the popular JavaScript framework.'
+        const response = await blogAPI.getPost(this.postId)
+        if (response.data) {
+          const postData = response.data
+          this.post = {
+            title: postData.title || '',
+            excerpt: postData.excerpt || '',
+            content: postData.content || '',
+            category_id: postData.category_id || '',
+            featured_image: postData.featured_image || '',
+            status: postData.status || 'draft',
+            meta_title: postData.meta_title || '',
+            meta_description: postData.meta_description || ''
+          }
+          this.selectedTags = postData.tags || []
         }
       } catch (error) {
         console.error('Error loading post:', error)
+        alert('Failed to load post. Please try again.')
       }
     },
     validateForm() {

@@ -58,15 +58,7 @@ class PostController extends Controller
         try {
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
-                'excerpt' => 'nullable|string|max:500',
                 'content' => 'required|string',
-                'featured_image' => 'nullable|string',
-                'status' => 'required|in:draft,published,pending',
-                'category_id' => 'nullable|exists:categories,id',
-                'tag_ids' => 'nullable|array',
-                'tag_ids.*' => 'exists:tags,id',
-                'meta_title' => 'nullable|string|max:255',
-                'meta_description' => 'nullable|string|max:500',
                 'is_published' => 'boolean'
             ]);
 
@@ -83,23 +75,14 @@ class PostController extends Controller
 
             $postData = array_merge($validated, [
                 'slug' => $slug,
-                'user_id' => Auth::id(),
-                'published_at' => $validated['status'] === 'published' ? now() : null
+                'user_id' => Auth::id()
             ]);
-
-            // Remove tag_ids from post data as it's for pivot table
-            unset($postData['tag_ids']);
 
             $post = Post::create($postData);
 
-            // Attach tags if provided
-            if (isset($validated['tag_ids'])) {
-                $post->tags()->attach($validated['tag_ids']);
-            }
-
             return response()->json([
                 'success' => true,
-                'data' => $post->load(['category', 'tags', 'user']),
+                'data' => $post,
                 'message' => 'Post created successfully'
             ], 201);
         } catch (\Exception $e) {
@@ -113,12 +96,9 @@ class PostController extends Controller
     public function show(Post $post)
     {
         try {
-            // Increment views count
-            $post->incrementViews();
-
             return response()->json([
                 'success' => true,
-                'data' => $post->load(['user', 'category', 'tags', 'comments.user', 'likes'])
+                'data' => $post->load(['user', 'comments.user', 'likes'])
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -132,7 +112,7 @@ class PostController extends Controller
     {
         try {
             // Check if user owns the post
-            if ($post->getAttribute('user_id') !== Auth::id()) {
+            if ($post->user_id !== Auth::id()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to update this post'
@@ -146,11 +126,11 @@ class PostController extends Controller
             ]);
 
             // Generate new slug if title changed
-            if (isset($validated['title']) && $validated['title'] !== $post->getAttribute('title')) {
+            if (isset($validated['title']) && $validated['title'] !== $post->title) {
                 $slug = Str::slug($validated['title']);
                 $originalSlug = $slug;
                 $counter = 1;
-                while (Post::where('slug', $slug)->where('id', '!=', $post->getKey())->exists()) {
+                while (Post::where('slug', $slug)->where('id', '!=', $post->id)->exists()) {
                     $slug = $originalSlug . '-' . $counter;
                     $counter++;
                 }
@@ -176,7 +156,7 @@ class PostController extends Controller
     {
         try {
             // Check if user owns the post
-            if ($post->getAttribute('user_id') !== Auth::id()) {
+            if ($post->user_id !== Auth::id()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to delete this post'

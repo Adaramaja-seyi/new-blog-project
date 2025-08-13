@@ -6,12 +6,12 @@
         :alt="post.title"
         class="img-fluid"
       />
-      <div class="category-tag">{{ post.category || 'General' }}</div>
+      <div class="category-tag">{{ post.category?.name || post.category || 'General' }}</div>
     </div>
     
     <div class="post-content">
       <h3 class="post-title">
-        <router-link :to="{ name: 'PostDetail', params: { id: post.id } }">
+        <router-link :to="{ name: 'PostDetail', params: { slug: post.slug } }">
           {{ post.title }}
         </router-link>
       </h3>
@@ -23,7 +23,7 @@
       <div class="post-meta">
         <div class="post-author">
           <i class="bi bi-person-circle me-1"></i>
-          {{ post.author }}
+          {{ post.user?.name || post.author || 'Unknown Author' }}
         </div>
         <div class="post-date">
           <i class="bi bi-calendar3 me-1"></i>
@@ -47,7 +47,7 @@
       </div>
       
       <router-link 
-        :to="{ name: 'PostDetail', params: { id: post.id } }"
+        :to="{ name: 'PostDetail', params: { slug: post.slug } }"
         class="btn btn-outline-primary btn-sm read-more-btn"
       >
         Read More

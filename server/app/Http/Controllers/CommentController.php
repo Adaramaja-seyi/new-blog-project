@@ -45,7 +45,7 @@ class CommentController extends Controller
             'user_id' => Auth::id(),
             'post_id' => $post->id,
             'parent_id' => $request->input('parent_id'),
-            'status' => 'pending'  // Set default status
+            'status' => 'pending'
         ]);
 
         $comment->load('user');
@@ -105,52 +105,16 @@ class CommentController extends Controller
 
     public function approve($id)
     {
-        $comment = Comment::findOrFail($id);
-
-        // Check if user owns the post that this comment belongs to
-        if ($comment->post->user_id !== Auth::id()) {
+        // Example: Only admin can approve
+        if (!Auth::user() || !Auth::user()->is_admin) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $comment->update(['status' => 'approved']);
-
-        return response()->json([
-            'message' => 'Comment approved successfully',
-            'comment' => $comment->load(['user', 'post'])
-        ]);
-    }
-
-    public function reject($id)
-    {
         $comment = Comment::findOrFail($id);
-
-        // Check if user owns the post that this comment belongs to
-        if ($comment->post->user_id !== Auth::id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $comment->update(['status' => 'pending']);
+        $comment->update(['is_approved' => true]);
 
         return response()->json([
-            'message' => 'Comment rejected successfully',
-            'comment' => $comment->load(['user', 'post'])
-        ]);
-    }
-
-    public function markAsSpam($id)
-    {
-        $comment = Comment::findOrFail($id);
-
-        // Check if user owns the post that this comment belongs to
-        if ($comment->post->user_id !== Auth::id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $comment->update(['status' => 'spam']);
-
-        return response()->json([
-            'message' => 'Comment marked as spam successfully',
-            'comment' => $comment->load(['user', 'post'])
+            'message' => 'Comment approved successfully'
         ]);
     }
 }

@@ -29,8 +29,8 @@
             <label class="form-label">Category</label>
             <select v-model="categoryFilter" class="form-select">
               <option value="">All Categories</option>
-              <option v-for="category in categories" :key="category" :value="category">
-                {{ category }}
+              <option v-for="category in categories" :key="category.id" :value="category.id">
+                {{ category.name }}
               </option>
             </select>
           </div>
@@ -120,7 +120,7 @@
                   <small class="text-muted">{{ formatDate(post.created_at) }}</small>
                 </div>
                 <div class="col-2">
-                  <span class="badge bg-light text-dark">{{ post.category }}</span>
+                  <span class="badge bg-light text-dark">{{ post.category?.name || 'Uncategorized' }}</span>
                 </div>
                 <div class="col-2">
                   <span class="badge" :class="getStatusClass(post.status)">
@@ -133,14 +133,14 @@
                 <div class="col-2">
                   <div class="btn-group btn-group-sm">
                     <router-link 
-                      :to="{ name: 'PostDetail', params: { id: post.id } }"
+                      :to="{ name: 'PostDetail', params: { slug: post.slug } }"
                       class="btn btn-light"
                       title="View"
                     >
                       <i class="bi bi-eye"></i>
                     </router-link>
                     <router-link 
-                      :to="{ name: 'EditPost', params: { id: post.id } }"
+                      :to="{ name: 'CreatePost', query: { edit: post.id } }"
                       class="btn btn-light"
                       title="Edit"
                     >
@@ -198,6 +198,9 @@
 </template>
 
 <script>
+import { blogAPI } from '@/api'
+import { useCategoriesStore } from '@/stores/categories'
+
 export default {
   name: 'DashboardPosts',
   data() {
@@ -209,13 +212,11 @@ export default {
       categoryFilter: '',
       searchQuery: '',
       currentPage: 1,
-      postsPerPage: 10
+      postsPerPage: 10,
+      categories: []
     }
   },
   computed: {
-    categories() {
-      return [...new Set(this.posts.map(post => post.category))]
-    },
     filteredPosts() {
       let filtered = this.posts
 
@@ -224,14 +225,15 @@ export default {
       }
 
       if (this.categoryFilter) {
-        filtered = filtered.filter(post => post.category === this.categoryFilter)
+        filtered = filtered.filter(post => post.category_id == this.categoryFilter)
       }
 
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase()
         filtered = filtered.filter(post => 
           post.title.toLowerCase().includes(query) ||
-          post.excerpt.toLowerCase().includes(query)
+          (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
+          (post.content && post.content.toLowerCase().includes(query))
         )
       }
 
@@ -252,54 +254,33 @@ export default {
   },
   mounted() {
     this.loadPosts()
+    this.loadCategories()
   },
   methods: {
     async loadPosts() {
       this.loading = true
       try {
-        // Mock data for now
-        this.posts = [
-          {
-            id: 1,
-            title: 'Getting Started with Vue 3',
-            excerpt: 'Learn the basics of Vue 3 and its new features...',
-            category: 'Development',
-            status: 'published',
-            created_at: '2024-01-15T10:00:00Z',
-            views: 1250
-          },
-          {
-            id: 2,
-            title: 'Bootstrap 5 Best Practices',
-            excerpt: 'Discover the best practices for using Bootstrap 5...',
-            category: 'Design',
-            status: 'draft',
-            created_at: '2024-01-14T15:30:00Z',
-            views: 0
-          },
-          {
-            id: 3,
-            title: 'Modern Web Development Trends',
-            excerpt: 'Explore the latest trends in web development...',
-            category: 'Technology',
-            status: 'published',
-            created_at: '2024-01-13T09:15:00Z',
-            views: 890
-          },
-          {
-            id: 4,
-            title: 'JavaScript ES6+ Features',
-            excerpt: 'Master the new JavaScript features introduced in ES6...',
-            category: 'Development',
-            status: 'pending',
-            created_at: '2024-01-12T14:20:00Z',
-            views: 0
-          }
-        ]
+        const filters = {}
+        if (this.statusFilter) filters.status = this.statusFilter
+        if (this.categoryFilter) filters.category_id = this.categoryFilter
+        if (this.searchQuery) filters.search = this.searchQuery
+
+        const response = await blogAPI.getDashboardPosts(filters)
+        this.posts = response.data
       } catch (error) {
         console.error('Error loading posts:', error)
+        // Handle error - could show a toast notification
       } finally {
         this.loading = false
+      }
+    },
+    async loadCategories() {
+      try {
+        const categoriesStore = useCategoriesStore()
+        await categoriesStore.fetchCategories()
+        this.categories = categoriesStore.categories
+      } catch (error) {
+        console.error('Error loading categories:', error)
       }
     },
     formatDate(dateString) {
@@ -326,10 +307,12 @@ export default {
     async deletePost(postId) {
       if (confirm('Are you sure you want to delete this post?')) {
         try {
+          await blogAPI.deletePost(postId)
           this.posts = this.posts.filter(post => post.id !== postId)
           this.selectedPosts = this.selectedPosts.filter(id => id !== postId)
         } catch (error) {
           console.error('Error deleting post:', error)
+          alert('Failed to delete post. Please try again.')
         }
       }
     },
@@ -345,29 +328,51 @@ export default {
 
       if (action === 'delete') {
         if (confirm(`Are you sure you want to delete ${this.selectedPosts.length} posts?`)) {
-          this.posts = this.posts.filter(post => !this.selectedPosts.includes(post.id))
-          this.selectedPosts = []
+          try {
+            await blogAPI.bulkDeletePosts({ ids: this.selectedPosts })
+            this.posts = this.posts.filter(post => !this.selectedPosts.includes(post.id))
+            this.selectedPosts = []
+          } catch (error) {
+            console.error('Error deleting posts:', error)
+            alert('Failed to delete some posts. Please try again.')
+          }
         }
       } else if (action === 'publish') {
-        this.posts = this.posts.map(post => {
-          if (this.selectedPosts.includes(post.id)) {
-            return { ...post, status: 'published' }
-          }
-          return post
-        })
-        this.selectedPosts = []
+        try {
+          await blogAPI.bulkUpdatePosts({ 
+            ids: this.selectedPosts, 
+            status: 'published' 
+          })
+          this.posts = this.posts.map(post => {
+            if (this.selectedPosts.includes(post.id)) {
+              return { ...post, status: 'published' }
+            }
+            return post
+          })
+          this.selectedPosts = []
+        } catch (error) {
+          console.error('Error publishing posts:', error)
+          alert('Failed to publish some posts. Please try again.')
+        }
       }
     }
   },
   watch: {
     statusFilter() {
       this.currentPage = 1
+      this.loadPosts()
     },
     categoryFilter() {
       this.currentPage = 1
+      this.loadPosts()
     },
     searchQuery() {
       this.currentPage = 1
+      // Debounce search to avoid too many API calls
+      clearTimeout(this.searchTimeout)
+      this.searchTimeout = setTimeout(() => {
+        this.loadPosts()
+      }, 500)
     }
   }
 }
