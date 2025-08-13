@@ -4,7 +4,7 @@ import { blogAPI } from '../api.js'
 // Reactive state
 const user = ref(null)
 const token = ref(localStorage.getItem('auth_token') || null)
-const isAuthenticated = computed(() => !!token.value)
+const isAuthenticated = computed(() => !!token.value && !!user.value)
 
 // Initialize user data if token exists
 const initializeAuth = async () => {

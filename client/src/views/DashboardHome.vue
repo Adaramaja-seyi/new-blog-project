@@ -245,14 +245,13 @@
 
 <script>
 import { useAuth } from '../stores/auth.js'
-import { usePosts } from '../stores/posts.js'
+import { blogAPI } from '../api.js'
 
 export default {
   name: 'DashboardHome',
   data() {
     return {
       auth: null,
-      postsStore: null,
       loading: false,
       stats: {
         totalPosts: 0,
@@ -271,32 +270,62 @@ export default {
   },
   mounted() {
     this.auth = useAuth()
-    this.postsStore = usePosts()
     this.loadDashboardData()
   },
   methods: {
     async loadDashboardData() {
       this.loading = true
       try {
-        const result = await this.postsStore.fetchDashboardStats()
+        // Load dashboard stats
+        await this.loadStats()
         
-        if (result.success) {
-          const data = result.data
-          this.stats = {
-            totalPosts: data.stats.totalPosts || 0,
-            totalViews: 0, // Not implemented yet
-            totalComments: data.stats.comments || 0,
-            totalLikes: data.stats.likes || 0
-          }
-          this.recentPosts = data.posts || []
-          this.recentComments = [] // Will be implemented later
-        } else {
-          console.error('Failed to load dashboard data:', result.message)
-        }
+        // Load recent posts and comments
+        await Promise.all([
+          this.loadRecentPosts(),
+          this.loadRecentComments()
+        ])
       } catch (error) {
         console.error('Error loading dashboard data:', error)
       } finally {
         this.loading = false
+      }
+    },
+
+    async loadStats() {
+      try {
+        const response = await blogAPI.dashboard.getStats()
+        if (response.data) {
+          this.stats = {
+            totalPosts: response.data.total_posts || 0,
+            totalViews: response.data.total_views || 0,
+            totalComments: response.data.total_comments || 0,
+            totalLikes: response.data.total_likes || 0
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard stats:', error)
+      }
+    },
+
+    async loadRecentPosts() {
+      try {
+        const response = await blogAPI.dashboard.getRecentPosts()
+        if (response.data) {
+          this.recentPosts = response.data
+        }
+      } catch (error) {
+        console.error('Failed to load recent posts:', error)
+      }
+    },
+
+    async loadRecentComments() {
+      try {
+        const response = await blogAPI.dashboard.getRecentComments()
+        if (response.data) {
+          this.recentComments = response.data
+        }
+      } catch (error) {
+        console.error('Failed to load recent comments:', error)
       }
     },
     formatDate(dateString) {

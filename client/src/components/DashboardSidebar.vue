@@ -4,7 +4,7 @@
     <div class="sidebar-header">
       <div class="sidebar-logo">
         <i class="bi bi-journal-text"></i>
-        <span>Blog Dashboard</span>
+        <a href="/">ZuraBlog</a>
       </div>
       <button 
         v-if="isMobile" 

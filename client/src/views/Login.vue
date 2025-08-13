@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div class="container my-auto">
     <div class="row justify-content-center">
       <div class="col-md-6 col-lg-4">
         <div class="card shadow-sm">
@@ -134,7 +134,7 @@ export default {
         
         if (result.success) {
           // Redirect to dashboard or intended page
-          const redirectTo = this.$route.query.redirect || '/dashboard'
+          const redirectTo = this.$route.query.redirect || '/'
           this.$router.push(redirectTo)
         } else {
           this.error = result.message
