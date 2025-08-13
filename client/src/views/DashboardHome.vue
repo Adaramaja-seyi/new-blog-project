@@ -244,11 +244,15 @@
 </template>
 
 <script>
+import { useAuth } from '../stores/auth.js'
+import { usePosts } from '../stores/posts.js'
+
 export default {
   name: 'DashboardHome',
   data() {
     return {
-      user: null,
+      auth: null,
+      postsStore: null,
       loading: false,
       stats: {
         totalPosts: 0,
@@ -260,70 +264,35 @@ export default {
       recentComments: []
     }
   },
+  computed: {
+    user() {
+      return this.auth?.user.value || null
+    }
+  },
   mounted() {
-    this.loadUserData()
+    this.auth = useAuth()
+    this.postsStore = usePosts()
     this.loadDashboardData()
   },
   methods: {
-    loadUserData() {
-      const userData = localStorage.getItem('user')
-      if (userData) {
-        this.user = JSON.parse(userData)
-      }
-    },
     async loadDashboardData() {
       this.loading = true
       try {
-        // Mock data for now
-        this.stats = {
-          totalPosts: 12,
-          totalViews: 15420,
-          totalComments: 89,
-          totalLikes: 234
+        const result = await this.postsStore.fetchDashboardStats()
+        
+        if (result.success) {
+          const data = result.data
+          this.stats = {
+            totalPosts: data.stats.totalPosts || 0,
+            totalViews: 0, // Not implemented yet
+            totalComments: data.stats.comments || 0,
+            totalLikes: data.stats.likes || 0
+          }
+          this.recentPosts = data.posts || []
+          this.recentComments = [] // Will be implemented later
+        } else {
+          console.error('Failed to load dashboard data:', result.message)
         }
-        
-        this.recentPosts = [
-          {
-            id: 1,
-            title: 'Getting Started with Vue 3',
-            status: 'published',
-            created_at: '2024-01-15T10:00:00Z',
-            views: 1250
-          },
-          {
-            id: 2,
-            title: 'Bootstrap 5 Best Practices',
-            status: 'draft',
-            created_at: '2024-01-14T15:30:00Z',
-            views: 0
-          },
-          {
-            id: 3,
-            title: 'Modern Web Development Trends',
-            status: 'published',
-            created_at: '2024-01-13T09:15:00Z',
-            views: 890
-          }
-        ]
-        
-        this.recentComments = [
-          {
-            id: 1,
-            author: 'John Doe',
-            content: 'Great article! Very helpful for beginners.',
-            post_title: 'Getting Started with Vue 3',
-            status: 'approved',
-            created_at: '2024-01-15T12:00:00Z'
-          },
-          {
-            id: 2,
-            author: 'Jane Smith',
-            content: 'I have a question about the setup process...',
-            post_title: 'Getting Started with Vue 3',
-            status: 'pending',
-            created_at: '2024-01-15T11:30:00Z'
-          }
-        ]
       } catch (error) {
         console.error('Error loading dashboard data:', error)
       } finally {
@@ -359,8 +328,13 @@ export default {
     async deletePost(postId) {
       if (confirm('Are you sure you want to delete this post?')) {
         try {
-          this.recentPosts = this.recentPosts.filter(post => post.id !== postId)
-          this.stats.totalPosts--
+          const result = await this.postsStore.deletePost(postId)
+          if (result.success) {
+            // Refresh dashboard data
+            await this.loadDashboardData()
+          } else {
+            console.error('Failed to delete post:', result.message)
+          }
         } catch (error) {
           console.error('Error deleting post:', error)
         }

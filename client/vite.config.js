@@ -5,15 +5,16 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   server: {
-    port: 3000,
     proxy: {
-      // Configure proxy for API calls - adjust base URL as needed
-      '/api': {
-        target: 'http://localhost:8000',
+      "/api": {
+        target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        secure: false
-      }
-    }
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+      },
+    },
   },
   css: {
     preprocessorOptions: {

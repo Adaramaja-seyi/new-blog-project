@@ -14,11 +14,10 @@ const api = axios.create({
 // Request interceptor - add auth token if available
 api.interceptors.request.use(
     (config) => {
-        // TODO: Add authentication token if user is logged in
-        // const token = localStorage.getItem('auth_token')
-        // if (token) {
-        //   config.headers.Authorization = `Bearer ${token}`
-        // }
+        const token = localStorage.getItem('auth_token')
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`
+        }
         return config
     },
     (error) => {
@@ -64,16 +63,23 @@ export const blogAPI = {
     deletePost: (id) => api.delete(`/posts/${id}`),
 
     // Auth
-    login: (credentials) => api.post('/auth/login', credentials),
-    register: (userData) => api.post('/auth/register', userData),
-    logout: () => api.post('/auth/logout'),
-    getProfile: () => api.get('/auth/profile'),
-    updateProfile: (data) => api.put('/auth/profile', data),
+    login: (credentials) => api.post('/login', credentials),
+    register: (userData) => api.post('/register', userData),
+    logout: () => api.post('/logout'),
+    getUserData: () => api.get('/user_data'),
+    updateProfile: (data) => api.post('/update_profile', data),
 
     // Comments
     getComments: (postId) => api.get(`/posts/${postId}/comments`),
     createComment: (postId, data) => api.post(`/posts/${postId}/comments`, data),
-    deleteComment: (commentId) => api.delete(`/comments/${commentId}`)
+    deleteComment: (commentId) => api.delete(`/comments/${commentId}`),
+
+    // Likes
+    likePost: (postId) => api.post(`/posts/${postId}/like`),
+    unlikePost: (postId) => api.post(`/posts/${postId}/unlike`),
+
+    // Dashboard
+    getDashboardStats: () => api.get('/dashboard/stats')
 }
 
 export default api

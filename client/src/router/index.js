@@ -161,28 +161,26 @@ const router = createRouter({
 })
 
 // Navigation guard for authentication
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
     // Update page title
     document.title = to.meta.title || 'Blog Platform'
 
     // Check if route requires authentication
     if (to.meta.requiresAuth) {
-        const user = localStorage.getItem('user')
-        if (!user) {
-            next('/login')
+        const token = localStorage.getItem('auth_token')
+        if (!token) {
+            next({ path: '/login', query: { redirect: to.fullPath } })
             return
         }
 
-        // Check if route requires author role
+        // For now, we'll allow all authenticated users to access dashboard
+        // You can add role-based checks later if needed
         if (to.meta.requiresAuthor) {
-            try {
-                const userData = JSON.parse(user)
-                if (userData.role !== 'author') {
-                    next('/')
-                    return
-                }
-            } catch {
-                next('/login')
+            // Check if user has author role (you can implement this later)
+            // For now, just check if user is authenticated
+            const user = localStorage.getItem('user')
+            if (!user) {
+                next({ path: '/login', query: { redirect: to.fullPath } })
                 return
             }
         }

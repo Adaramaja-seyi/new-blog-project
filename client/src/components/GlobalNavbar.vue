@@ -45,12 +45,7 @@
                 Register
               </router-link>
             </li>
-            <!-- Temporary login button for testing -->
-            <li class="nav-item">
-              <button @click="simulateAuthorLogin" class="btn btn-outline-primary btn-sm">
-                Login as Author (Test)
-              </button>
-            </li>
+
           </template>
           
           <!-- Show when user IS authenticated -->
@@ -106,59 +101,35 @@
 </template>
 
 <script>
+import { useAuth } from '../stores/auth.js'
+
 export default {
   name: 'GlobalNavbar',
   data() {
     return {
-      isAuthenticated: false,
-      user: null
+      auth: null
     }
   },
   computed: {
+    isAuthenticated() {
+      return this.auth?.isAuthenticated.value || false
+    },
+    user() {
+      return this.auth?.user.value || null
+    },
     isAuthor() {
-      return this.user?.role === 'author'
+      return this.user?.role === 'author' || true // For now, allow all authenticated users
     }
   },
   mounted() {
-    this.checkAuthStatus()
+    this.auth = useAuth()
   },
   methods: {
-    checkAuthStatus() {
-      const user = localStorage.getItem('user')
-      const token = localStorage.getItem('token')
-      
-      if (user && token) {
-        try {
-          this.user = JSON.parse(user)
-          this.isAuthenticated = true
-        } catch (error) {
-          this.clearAuth()
-        }
-      } else {
-        this.clearAuth()
+    async handleLogout() {
+      if (this.auth) {
+        await this.auth.logout()
+        this.$router.push('/login')
       }
-    },
-    clearAuth() {
-      this.isAuthenticated = false
-      this.user = null
-      localStorage.removeItem('user')
-      localStorage.removeItem('token')
-    },
-    handleLogout() {
-      this.clearAuth()
-      this.$router.push('/login')
-    },
-    simulateAuthorLogin() {
-      this.user = {
-        id: 'temp-author-id',
-        name: 'Test Author',
-        email: 'test@example.com',
-        role: 'author'
-      };
-      this.isAuthenticated = true;
-      localStorage.setItem('user', JSON.stringify(this.user));
-      localStorage.setItem('token', 'temp-token'); // In a real app, this would be a JWT
-      this.$router.push('/dashboard');
     }
   }
 }

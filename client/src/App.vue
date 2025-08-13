@@ -1,6 +1,7 @@
 <script>
 import GlobalNavbar from './components/GlobalNavbar.vue'
 import Footer from './components/Footer.vue'
+import { useAuth } from './stores/auth.js'
 
 export default {
   name: 'App',
@@ -8,21 +9,25 @@ export default {
     GlobalNavbar,
     Footer
   },
+  data() {
+    return {
+      authInitialized: false
+    }
+  },
   computed: {
     isDashboardRoute() {
       return this.$route.path.startsWith('/dashboard')
     },
-    isAuthor() {
-      const user = localStorage.getItem('user')
-      if (!user) return false
-      
-      try {
-        const userData = JSON.parse(user)
-        return userData.role === 'author'
-      } catch {
-        return false
-      }
+    isAuthenticated() {
+      const auth = useAuth()
+      return auth.isAuthenticated.value
     }
+  },
+  async mounted() {
+    // Initialize authentication on app start
+    const auth = useAuth()
+    await auth.initializeAuth()
+    this.authInitialized = true
   }
 }
 </script>
@@ -43,22 +48,21 @@ export default {
       <Footer />
     </template>
     
-    <!-- Show dashboard layout for dashboard routes (authors only) -->
-    <template v-else-if="isAuthor">
+    <!-- Show dashboard layout for authenticated users -->
+    <template v-else-if="isAuthenticated">
       <router-view />
     </template>
     
-    <!-- Redirect non-authors trying to access dashboard -->
+    <!-- Show loading or redirect for unauthenticated users -->
     <template v-else>
-      <div class="unauthorized-access">
+      <div class="loading-container">
         <div class="container">
           <div class="row justify-content-center">
             <div class="col-md-6 text-center">
-              <h2>Access Denied</h2>
-              <p>You don't have permission to access the dashboard.</p>
-              <router-link to="/" class="btn btn-primary">
-                Go to Home
-              </router-link>
+              <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-3">Loading...</p>
             </div>
           </div>
         </div>
@@ -73,7 +77,7 @@ export default {
   padding: 2rem 0;
 }
 
-.unauthorized-access {
+.loading-container {
   min-height: 100vh;
   display: flex;
   align-items: center;

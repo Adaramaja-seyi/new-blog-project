@@ -13,36 +13,22 @@
             <form @submit.prevent="handleRegister">
               <!-- Name Fields -->
               <div class="row">
-                <div class="col-md-6 mb-3">
-                  <label for="firstName" class="form-label">First Name</label>
+                <div class=" mb-3">
+                  <label for="Fullname" class="form-label">Full Name</label>
                   <input
-                    id="firstName"
-                    v-model="form.firstName"
+                    id="fullname"
+                    v-model="form.Fullname"
                     type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.firstName }"
-                    placeholder="First name"
+                    class="form-control "
+                    :class="{ 'is-invalid': errors.Fullname }"
+                    placeholder="Full name"
                     required
                   />
-                  <div v-if="errors.firstName" class="invalid-feedback">
-                    {{ errors.firstName }}
+                  <div v-if="errors.Fullname" class="invalid-feedback">
+                    {{ errors.Fullname }}
                   </div>
                 </div>
-                <div class="col-md-6 mb-3">
-                  <label for="lastName" class="form-label">Last Name</label>
-                  <input
-                    id="lastName"
-                    v-model="form.lastName"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.lastName }"
-                    placeholder="Last name"
-                    required
-                  />
-                  <div v-if="errors.lastName" class="invalid-feedback">
-                    {{ errors.lastName }}
-                  </div>
-                </div>
+              
               </div>
               
               <!-- Email Field -->
@@ -153,16 +139,14 @@
 </template>
 
 <script>
-import { blogAPI } from '../api.js'
+import { useAuth } from '../stores/auth.js'
 
 export default {
   name: 'Register',
   data() {
     return {
       form: {
-        firstName: '',
-        lastName: '',
-        email: '',
+        Fullname: '',
         password: '',
         confirmPassword: '',
         agreeToTerms: false
@@ -186,46 +170,26 @@ export default {
       try {
         this.loading = true
         
-        // TODO: Implement API call to register
-        // const response = await blogAPI.register({
-        //   first_name: this.form.firstName,
-        //   last_name: this.form.lastName,
-        //   email: this.form.email,
-        //   password: this.form.password,
-        //   password_confirmation: this.form.confirmPassword
-        // })
+        const auth = useAuth()
+        const result = await auth.register({
+          name: `${this.form.Fullname} `,
+          email: this.form.email,
+          password: this.form.password
+        })
         
-        // TODO: Store authentication token/user data
-        // localStorage.setItem('auth_token', response.data.token)
-        // localStorage.setItem('user', JSON.stringify(response.data.user))
-        
-        // Mock successful registration
-        console.log('Registration successful:', this.form)
-        
-        // Redirect to dashboard
-        this.$router.push('/dashboard')
+        if (result.success) {
+          // Redirect to dashboard
+          this.$router.push('/dashboard')
+        } else {
+          this.error = result.message
+          if (result.errors) {
+            this.errors = result.errors
+          }
+        }
         
       } catch (error) {
         console.error('Registration error:', error)
-        
-        // Handle different types of errors
-        if (error.response) {
-          const { status, data } = error.response
-          
-          if (status === 422) {
-            // Validation errors
-            this.errors = data.errors || {}
-          } else if (status === 409) {
-            // Email already exists
-            this.error = 'An account with this email already exists'
-          } else {
-            // Other server errors
-            this.error = data.message || 'An error occurred during registration'
-          }
-        } else {
-          // Network or other errors
-          this.error = 'Unable to connect to server. Please try again.'
-        }
+        this.error = 'An unexpected error occurred. Please try again.'
       } finally {
         this.loading = false
       }
@@ -234,18 +198,13 @@ export default {
       const errors = {}
       
       // First name validation
-      if (!this.form.firstName.trim()) {
-        errors.firstName = 'First name is required'
-      } else if (this.form.firstName.length < 2) {
-        errors.firstName = 'First name must be at least 2 characters'
+      if (!this.form.Fullname.trim()) {
+        errors.Fullname = 'Fullname is required'
+      } else if (this.form.Fullname.length < 2) {
+        errors.Fullname = 'Fullname must be at least 2 characters'
       }
       
-      // Last name validation
-      if (!this.form.lastName.trim()) {
-        errors.lastName = 'Last name is required'
-      } else if (this.form.lastName.length < 2) {
-        errors.lastName = 'Last name must be at least 2 characters'
-      }
+      
       
       // Email validation
       if (!this.form.email) {
@@ -300,6 +259,7 @@ export default {
 .form-control:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+
 }
 
 .btn-primary {

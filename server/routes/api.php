@@ -14,8 +14,8 @@ Route::get('/user', function (Request $request) {
     return $request->user()->load(['posts', 'comments', 'likes']);
 })->middleware('auth:sanctum');
 
-// routes/api.php
-Route::post('/create_users', [AuthController::class, 'register']);
+// Authentication routes
+Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {

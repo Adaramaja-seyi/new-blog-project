@@ -96,7 +96,7 @@
 </template>
 
 <script>
-import { blogAPI } from '../api.js'
+import { useAuth } from '../stores/auth.js'
 
 export default {
   name: 'Login',
@@ -126,45 +126,26 @@ export default {
       try {
         this.loading = true
         
-        // TODO: Implement API call to login
-        // const response = await blogAPI.login({
-        //   email: this.form.email,
-        //   password: this.form.password,
-        //   remember: this.form.remember
-        // })
+        const auth = useAuth()
+        const result = await auth.login({
+          email: this.form.email,
+          password: this.form.password
+        })
         
-        // TODO: Store authentication token/user data
-        // localStorage.setItem('auth_token', response.data.token)
-        // localStorage.setItem('user', JSON.stringify(response.data.user))
-        
-        // Mock successful login
-        console.log('Login successful:', this.form)
-        
-        // Redirect to dashboard or intended page
-        const redirectTo = this.$route.query.redirect || '/dashboard'
-        this.$router.push(redirectTo)
+        if (result.success) {
+          // Redirect to dashboard or intended page
+          const redirectTo = this.$route.query.redirect || '/dashboard'
+          this.$router.push(redirectTo)
+        } else {
+          this.error = result.message
+          if (result.errors) {
+            this.errors = result.errors
+          }
+        }
         
       } catch (error) {
         console.error('Login error:', error)
-        
-        // Handle different types of errors
-        if (error.response) {
-          const { status, data } = error.response
-          
-          if (status === 422) {
-            // Validation errors
-            this.errors = data.errors || {}
-          } else if (status === 401) {
-            // Invalid credentials
-            this.error = 'Invalid email or password'
-          } else {
-            // Other server errors
-            this.error = data.message || 'An error occurred during login'
-          }
-        } else {
-          // Network or other errors
-          this.error = 'Unable to connect to server. Please try again.'
-        }
+        this.error = 'An unexpected error occurred. Please try again.'
       } finally {
         this.loading = false
       }
