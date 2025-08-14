@@ -17,7 +17,7 @@ const fetchPosts = async (filters = {}) => {
         loading.value = true
         error.value = null
 
-        const response = await blogAPI.getPosts(filters.page || 1, filters.limit || 10)
+        const response = await blogAPI.getPosts(filters)
 
         if (response.data.success) {
             posts.value = response.data.data
@@ -69,7 +69,8 @@ const createPost = async (postData) => {
 
         if (response.data.success) {
             const newPost = response.data.data
-            posts.value.unshift(newPost)
+            // Instead of just unshifting, fetch the latest posts from the API
+            await fetchPosts()
             return { success: true, data: newPost }
         } else {
             error.value = response.data.message

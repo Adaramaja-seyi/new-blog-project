@@ -7,21 +7,30 @@
           <div class="row align-items-center">
             <div class="col-lg-6">
               <div class="hero-text">
-                <div class="category-tag mb-3">{{ featuredPost.category?.name || 'Featured' }}</div>
+                <div class="category-tag mb-3">
+                  {{ featuredPost?.category?.name || "Featured" }}
+                </div>
                 <h1 class="hero-title">{{ featuredPost.title }}</h1>
                 <p class="hero-subtitle">{{ featuredPost.excerpt }}</p>
                 <div class="hero-meta mb-4">
                   <span class="hero-author">
                     <i class="bi bi-person-circle me-1"></i>
-                    {{ featuredPost.user?.name || featuredPost.author || 'Unknown Author' }}
+                    {{
+                      featuredPost?.user?.name ||
+                      featuredPost?.author ||
+                      "Unknown Author"
+                    }}
                   </span>
                   <span class="hero-date">
                     <i class="bi bi-calendar3 me-1"></i>
                     {{ formatDate(featuredPost.created_at) }}
                   </span>
                 </div>
-                <router-link 
-                  :to="{ name: 'PostDetail', params: { slug: featuredPost.slug } }"
+                <router-link
+                  :to="{
+                    name: 'PostDetail',
+                    params: { slug: featuredPost.slug },
+                  }"
                   class="btn btn-primary btn-lg"
                 >
                   Read More
@@ -31,8 +40,8 @@
             </div>
             <div class="col-lg-6">
               <div class="hero-image">
-                <img 
-                  :src="featuredPost.featured_image || '/placeholder-hero.jpg'" 
+                <img
+                  :src="featuredPost.featured_image || '/placeholder-hero.jpg'"
                   :alt="featuredPost.title"
                   class="img-fluid rounded"
                 />
@@ -42,7 +51,7 @@
         </div>
       </div>
     </section>
-    
+
     <!-- Search and Filter Section -->
     <section class="search-filter-section">
       <div class="container">
@@ -53,9 +62,9 @@
                 <span class="input-group-text bg-transparent border-end-0">
                   <i class="bi bi-search"></i>
                 </span>
-                <input 
-                  type="text" 
-                  class="form-control border-start-0" 
+                <input
+                  type="text"
+                  class="form-control border-start-0"
                   placeholder="Search posts..."
                   v-model="searchQuery"
                   @input="handleSearch"
@@ -64,15 +73,15 @@
             </div>
           </div>
           <div class="col-lg-4">
-            <select 
-              class="form-select" 
+            <select
+              class="form-select"
               v-model="selectedCategory"
               @change="handleCategoryChange"
             >
               <option value="">All Categories</option>
-              <option 
-                v-for="category in categories" 
-                :key="category.id" 
+              <option
+                v-for="category in categories"
+                :key="category.id"
                 :value="category.id"
               >
                 {{ category.name }}
@@ -82,7 +91,7 @@
         </div>
       </div>
     </section>
-    
+
     <!-- Posts Grid Section -->
     <section class="posts-section">
       <div class="container">
@@ -92,39 +101,54 @@
             <span class="visually-hidden">Loading...</span>
           </div>
         </div>
-        
+
         <!-- Posts Grid -->
         <div v-else-if="filteredPosts.length > 0">
           <div class="post-grid">
-            <PostCard 
-              v-for="post in paginatedPosts" 
-              :key="post.id" 
+            <PostCard
+              v-for="post in paginatedPosts"
+              :key="post.id"
               :post="post"
             />
           </div>
-          
+
           <!-- Pagination -->
           <div class="pagination-container">
             <nav v-if="totalPages > 1" aria-label="Posts pagination">
               <ul class="pagination justify-content-center">
                 <li class="page-item" :class="{ disabled: currentPage === 1 }">
-                  <a class="page-link" href="#" @click.prevent="changePage(currentPage - 1)">
+                  <a
+                    class="page-link"
+                    href="#"
+                    @click.prevent="changePage(currentPage - 1)"
+                  >
                     <i class="bi bi-chevron-left"></i>
                     Previous
                   </a>
                 </li>
-                <li 
-                  v-for="page in visiblePages" 
+                <li
+                  v-for="page in visiblePages"
                   :key="page"
                   class="page-item"
                   :class="{ active: page === currentPage }"
                 >
-                  <a class="page-link" href="#" @click.prevent="changePage(page)">
+                  <a
+                    class="page-link"
+                    href="#"
+                    @click.prevent="changePage(page)"
+                  >
                     {{ page }}
                   </a>
                 </li>
-                <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-                  <a class="page-link" href="#" @click.prevent="changePage(currentPage + 1)">
+                <li
+                  class="page-item"
+                  :class="{ disabled: currentPage === totalPages }"
+                >
+                  <a
+                    class="page-link"
+                    href="#"
+                    @click.prevent="changePage(currentPage + 1)"
+                  >
                     Next
                     <i class="bi bi-chevron-right"></i>
                   </a>
@@ -133,7 +157,7 @@
             </nav>
           </div>
         </div>
-        
+
         <!-- Empty State -->
         <div v-else class="empty-state">
           <div class="empty-icon">
@@ -151,13 +175,13 @@
 </template>
 
 <script>
-import PostCard from '../components/PostCard.vue'
-import { blogAPI } from '../api.js'
+import PostCard from "../components/PostCard.vue";
+import { blogAPI } from "../api.js";
 
 export default {
-  name: 'Home',
+  name: "Home",
   components: {
-    PostCard
+    PostCard,
   },
   data() {
     return {
@@ -167,135 +191,143 @@ export default {
       currentPage: 1,
       totalPages: 1,
       postsPerPage: 9,
-      searchQuery: '',
-      selectedCategory: '',
-      featuredPost: null
-    }
+      searchQuery: "",
+      selectedCategory: "",
+      featuredPost: null,
+    };
   },
   computed: {
     filteredPosts() {
-      let filtered = this.posts
-      
+      let filtered = this.posts;
+
       // Filter by search query
       if (this.searchQuery.trim()) {
-        const query = this.searchQuery.toLowerCase()
-        filtered = filtered.filter(post => 
-          post.title.toLowerCase().includes(query) ||
-          (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
-          (post.user?.name && post.user.name.toLowerCase().includes(query)) ||
-          (post.author && post.author.toLowerCase().includes(query))
-        )
+        const query = this.searchQuery.toLowerCase();
+        filtered = filtered.filter(
+          (post) =>
+            post.title.toLowerCase().includes(query) ||
+            (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
+            (post.user?.name && post.user.name.toLowerCase().includes(query)) ||
+            (post.author && post.author.toLowerCase().includes(query))
+        );
       }
-      
+
       // Filter by category
       if (this.selectedCategory) {
-        filtered = filtered.filter(post => post.category_id == this.selectedCategory)
+        filtered = filtered.filter(
+          (post) => post.category_id == this.selectedCategory
+        );
       }
-      
-      return filtered
+
+      return filtered;
     },
     paginatedPosts() {
-      const start = (this.currentPage - 1) * this.postsPerPage
-      const end = start + this.postsPerPage
-      return this.filteredPosts.slice(start, end)
+      const start = (this.currentPage - 1) * this.postsPerPage;
+      const end = start + this.postsPerPage;
+      return this.filteredPosts.slice(start, end);
     },
     totalPages() {
-      return Math.ceil(this.filteredPosts.length / this.postsPerPage)
+      return Math.ceil(this.filteredPosts.length / this.postsPerPage);
     },
     visiblePages() {
-      const pages = []
-      const start = Math.max(1, this.currentPage - 2)
-      const end = Math.min(this.totalPages, this.currentPage + 2)
-      
+      const pages = [];
+      const start = Math.max(1, this.currentPage - 2);
+      const end = Math.min(this.totalPages, this.currentPage + 2);
+
       for (let i = start; i <= end; i++) {
-        pages.push(i)
+        pages.push(i);
       }
-      return pages
-    }
+      return pages;
+    },
   },
   mounted() {
-    this.fetchPosts()
-    this.fetchCategories()
+    this.fetchPosts();
+    this.fetchCategories();
   },
   methods: {
     async fetchPosts() {
       try {
-        this.loading = true
-        const filters = {}
-        if (this.searchQuery) filters.search = this.searchQuery
-        if (this.selectedCategory) filters.category_id = this.selectedCategory
-        
-        const response = await blogAPI.getPosts(filters)
-        this.posts = response.data
-        
+        this.loading = true;
+        const filters = {};
+        if (this.searchQuery) filters.search = this.searchQuery;
+        if (this.selectedCategory) filters.category_id = this.selectedCategory;
+
+        const response = await blogAPI.getPosts(filters);
+        this.posts = response.data.data;
+
         // Set the most recent or most viewed post as featured
         if (this.posts.length > 0) {
-          this.featuredPost = this.posts.find(post => post.is_featured) || this.posts[0]
+          this.featuredPost =
+            this.posts.find((post) => post.is_featured) || this.posts[0];
         }
       } catch (error) {
-        console.error('Error fetching posts:', error)
+        console.error("Error fetching posts:", error);
         // Fallback to empty array on error
-        this.posts = []
-        this.featuredPost = null
+        this.posts = [];
+        this.featuredPost = null;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     async fetchCategories() {
       try {
-        const response = await blogAPI.getCategories()
-        this.categories = response.data
+        const response = await blogAPI.getCategories();
+        this.categories = response.data;
       } catch (error) {
-        console.error('Error fetching categories:', error)
+        console.error("Error fetching categories:", error);
         // Fallback to empty array on error
-        this.categories = []
+        this.categories = [];
       }
     },
     handleSearch() {
-      this.currentPage = 1 // Reset to first page when searching
+      this.currentPage = 1; // Reset to first page when searching
       // Debounce search to avoid too many API calls
-      clearTimeout(this.searchTimeout)
+      clearTimeout(this.searchTimeout);
       this.searchTimeout = setTimeout(() => {
-        this.fetchPosts()
-      }, 500)
+        this.fetchPosts();
+      }, 500);
     },
     handleCategoryChange() {
-      this.currentPage = 1 // Reset to first page when changing category
-      this.fetchPosts()
+      this.currentPage = 1; // Reset to first page when changing category
+      this.fetchPosts();
     },
     changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
-        this.currentPage = page
+        this.currentPage = page;
         // Scroll to top of posts section
-        document.querySelector('.posts-section').scrollIntoView({ 
-          behavior: 'smooth' 
-        })
+        document.querySelector(".posts-section").scrollIntoView({
+          behavior: "smooth",
+        });
       }
     },
     clearFilters() {
-      this.searchQuery = ''
-      this.selectedCategory = ''
-      this.currentPage = 1
-      this.fetchPosts()
+      this.searchQuery = "";
+      this.selectedCategory = "";
+      this.currentPage = 1;
+      this.fetchPosts();
     },
     formatDate(dateString) {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
-    }
-  }
-}
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    },
+  },
+};
 </script>
 
 <style scoped lang="scss">
 .home-page {
   .hero-section {
-    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--bg-primary) 0%,
+      var(--bg-secondary) 100%
+    );
     padding: var(--section-spacing) 0;
     margin-bottom: var(--section-spacing);
-    
+
     .hero-content {
       .hero-text {
         .hero-title {
@@ -305,32 +337,32 @@ export default {
           color: var(--text-primary);
           line-height: 1.2;
         }
-        
+
         .hero-subtitle {
           font-size: 1.1rem;
           color: var(--text-secondary);
           margin-bottom: 1.5rem;
           line-height: 1.6;
         }
-        
+
         .hero-meta {
           display: flex;
           gap: 1.5rem;
           font-size: 0.9rem;
           color: var(--text-muted);
-          
+
           .hero-author,
           .hero-date {
             display: flex;
             align-items: center;
-            
+
             i {
               font-size: 1rem;
             }
           }
         }
       }
-      
+
       .hero-image {
         img {
           width: 100%;
@@ -341,23 +373,23 @@ export default {
       }
     }
   }
-  
+
   .search-filter-section {
     background-color: var(--bg-secondary);
     padding: var(--component-spacing);
     border-radius: 0.75rem;
     margin-bottom: var(--card-spacing);
-    
+
     .search-box {
       .input-group {
         .input-group-text {
           border-color: var(--border-color);
           color: var(--text-muted);
         }
-        
+
         .form-control {
           border-color: var(--border-color);
-          
+
           &:focus {
             border-color: var(--primary-blue);
             box-shadow: 0 0 0 0.2rem rgba(61, 169, 252, 0.25);
@@ -365,17 +397,17 @@ export default {
         }
       }
     }
-    
+
     .form-select {
       border-color: var(--border-color);
-      
+
       &:focus {
         border-color: var(--primary-blue);
         box-shadow: 0 0 0 0.2rem rgba(61, 169, 252, 0.25);
       }
     }
   }
-  
+
   .posts-section {
     .post-grid {
       display: grid;
@@ -383,7 +415,7 @@ export default {
       gap: var(--card-spacing);
       margin-bottom: var(--section-spacing);
     }
-    
+
     .pagination-container {
       margin-top: var(--card-spacing);
     }
@@ -400,21 +432,20 @@ export default {
             font-size: 2rem;
           }
         }
-        
+
         .hero-image {
           margin-top: 2rem;
-          
+
           img {
             height: 300px;
           }
         }
       }
     }
-    
+
     .post-grid {
       grid-template-columns: 1fr;
     }
   }
 }
 </style>
-

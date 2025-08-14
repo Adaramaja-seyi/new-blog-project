@@ -17,11 +17,30 @@ class PostController extends Controller
         try {
             $userId = Auth::id();
             $filterUserId = request()->query('user_id');
-            $query = Post::with(['user', 'comments.user', 'likes'])->latest();
+            $search = request()->query('search');
+            $categoryId = request()->query('category_id');
+            $page = (int) request()->query('page', 1);
+            $limit = (int) request()->query('limit', 10);
+
+            $query = Post::with(['user', 'comments.user', 'likes', 'category'])->latest();
             if ($filterUserId) {
                 $query->where('user_id', $filterUserId);
             }
-            $posts = $query->get()->map(function ($post) use ($userId) {
+            if ($categoryId) {
+                $query->where('category_id', $categoryId);
+            }
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%$search%")
+                        ->orWhere('content', 'like', "%$search%")
+                        ->orWhereHas('user', function ($uq) use ($search) {
+                            $uq->where('name', 'like', "%$search%");
+                        });
+                });
+            }
+
+            $paginator = $query->paginate($limit, ['*'], 'page', $page);
+            $posts = $paginator->getCollection()->map(function ($post) use ($userId) {
                 $isLiked = $post->likes->contains('user_id', $userId);
                 return [
                     'id' => $post->id,
@@ -31,6 +50,7 @@ class PostController extends Controller
                     'featured_image' => $post->featured_image,
                     'is_published' => $post->is_published,
                     'user' => $post->user,
+                    'category' => $post->category,
                     'created_at' => $post->created_at,
                     'updated_at' => $post->updated_at,
                     'likes_count' => $post->likes->count(),
@@ -43,7 +63,10 @@ class PostController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $posts
+                'data' => $posts,
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -112,7 +135,7 @@ class PostController extends Controller
     {
         try {
             // Check if user owns the post
-            if ($post->user_id !== Auth::id()) {
+            if ($post->getAttribute('user_id') !== Auth::id()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to update this post'
@@ -126,7 +149,7 @@ class PostController extends Controller
             ]);
 
             // Generate new slug if title changed
-            if (isset($validated['title']) && $validated['title'] !== $post->title) {
+            if (isset($validated['title']) && $validated['title'] !== $post->getAttribute('title')) {
                 $slug = Str::slug($validated['title']);
                 $originalSlug = $slug;
                 $counter = 1;
@@ -156,7 +179,7 @@ class PostController extends Controller
     {
         try {
             // Check if user owns the post
-            if ($post->user_id !== Auth::id()) {
+            if ($post->getAttribute('user_id') !== Auth::id()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to delete this post'
