@@ -3,10 +3,7 @@
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border" role="status">
-        <span
-          class="visually- loading: true, error: false, newComment: '', submitting: false, deleting: false, likingPost: false, isLiked: false, auth: null"
-          >Loading...</span
-        >
+        <span class="visually-hidden">Loading...</span>
       </div>
     </div>
 
@@ -23,14 +20,34 @@
         <!-- Post Header -->
         <header class="mb-4">
           <h1 class="display-5 mb-3">{{ post.title }}</h1>
+          <!-- Excerpt / Subtitle -->
+          <p v-if="post.excerpt" class="lead text-muted mb-3">{{ post.excerpt }}</p>
           <div class="d-flex align-items-center text-muted mb-4">
-            <span>By {{ post.user?.name || post.author || "Unknown Author" }}</span>
+            <span>
+              By
+              <router-link
+                v-if="post.user?.id"
+                :to="{ name: 'UserProfile', params: { id: post.user.id } }"
+                class="text-decoration-none"
+              >
+                {{ post.user?.name || "Unknown Author" }}
+              </router-link>
+              <span v-else>{{ post.user?.name || post.author || "Unknown Author" }}</span>
+            </span>
             <span class="mx-2">•</span>
             <span>{{ formatDate(post.created_at) }}</span>
             <span v-if="post.category" class="mx-2">•</span>
-            <span v-if="post.category" class="badge bg-secondary">{{
-              post.category.name || post.category
-            }}</span>
+            <router-link
+              v-if="post.category"
+              :to="{ name: 'Category', params: { slug: post.category.slug } }"
+              class="badge text-white"
+              :style="{ background: post.category.color || '#6c757d' }"
+            >
+              {{ post.category.name }}
+            </router-link>
+            <small v-if="post.updated_at" class="text-muted ms-3"
+              >(updated {{ formatDate(post.updated_at) }})</small
+            >
           </div>
 
           <!-- Featured Image -->
@@ -68,29 +85,33 @@
                 {{ post.likes_count || 0 }}
               </router-link>
 
-              <!-- Views -->
+              <!-- Comments -->
               <span class="text-muted">
-                <i class="bi bi-eye me-1"></i>
-                {{ post.views || 0 }} views
+                <i class="bi bi-chat me-1"></i>
+                {{ post.comments_count || 0 }} comments
               </span>
             </div>
           </div>
         </header>
 
-        <!-- Featured Image -->
-        <div v-if="post.featured_image" class="featured-image mb-4">
-          <img
-            :src="post.featured_image"
-            :alt="post.title"
-            class="img-fluid rounded"
-            style="width: 100%; max-height: 400px; object-fit: cover"
-          />
-        </div>
-
         <!-- Post Content -->
         <article class="post-content mb-5">
           <div v-html="post.content"></div>
         </article>
+
+        <!-- Tags -->
+        <div v-if="post.tags && post.tags.length > 0" class="mb-4">
+          <h6 class="mb-2">Tags</h6>
+          <div class="d-flex flex-wrap gap-2">
+            <span
+              v-for="tag in post.tags"
+              :key="tag"
+              class="badge bg-light text-dark border"
+              >#{{ tag }}</span
+            >
+          </div>
+        </div>
+        <div v-else class="mb-4 text-muted">No tags for this post.</div>
 
         <!-- Comments Section -->
         <section class="comments-section">
@@ -182,6 +203,13 @@
             <p class="text-muted">
               {{ post.user?.bio || post.author_bio || "No bio available." }}
             </p>
+            <router-link
+              v-if="post.user?.id"
+              :to="{ name: 'UserProfile', params: { id: post.user.id } }"
+              class="btn btn-sm btn-outline-primary mt-2"
+            >
+              View Profile
+            </router-link>
           </div>
         </div>
 
@@ -234,20 +262,43 @@ export default {
   computed: {
     isAuthenticated() {
       if (!this.auth) return false;
-      return this.auth.isAuthenticated.value || false;
+
+      // Check token in localStorage as fallback
+      const hasToken = !!localStorage.getItem("auth_token");
+      const hasUser = !!localStorage.getItem("user");
+      const authStoreValue = this.auth.isAuthenticated || false;
+
+      const isAuth = authStoreValue || (hasToken && hasUser);
+
+      console.log(
+        "Computing isAuthenticated:",
+        { authStoreValue, hasToken, hasUser, result: isAuth },
+        "token:",
+        this.auth.token,
+        "user:",
+        this.auth.user
+      );
+      return isAuth;
     },
     currentUser() {
-      return this.auth?.user || null;
+      // Try to get user from auth store first, then fallback to localStorage
+      const authUser = this.auth?.user;
+      if (authUser) return authUser;
+
+      const localUser = localStorage.getItem("user");
+      return localUser ? JSON.parse(localUser) : null;
     },
   },
   created() {
     this.auth = useAuth();
   },
   mounted() {
-    this.fetchPost();
-    this.fetchComments();
-    this.fetchRelatedPosts();
-    this.checkLikeStatus();
+    // Fetch post first, then load dependent data and like status
+    this.fetchPost().then(() => {
+      this.fetchComments();
+      this.fetchRelatedPosts();
+      this.checkLikeStatus();
+    });
   },
   methods: {
     async fetchPost() {
@@ -256,7 +307,9 @@ export default {
         const postSlug = this.$route.params.slug;
 
         const response = await blogAPI.getPost(postSlug);
-        this.post = response.data;
+        // Support both { success: true, data: { ... } } and direct payload
+        this.post =
+          response.data && response.data.data ? response.data.data : response.data;
       } catch (error) {
         console.error("Error fetching post:", error);
         this.error = true;
@@ -269,7 +322,8 @@ export default {
         const postSlug = this.$route.params.slug;
 
         const response = await blogAPI.getPostComments(postSlug);
-        this.comments = response.data;
+        this.comments =
+          response.data && response.data.data ? response.data.data : response.data;
       } catch (error) {
         console.error("Error fetching comments:", error);
       }
@@ -279,36 +333,73 @@ export default {
         const postSlug = this.$route.params.slug;
 
         const response = await blogAPI.getRelatedPosts(postSlug);
-        this.relatedPosts = response.data;
+        this.relatedPosts =
+          response.data && response.data.data ? response.data.data : response.data;
       } catch (error) {
         console.error("Error fetching related posts:", error);
       }
     },
     async checkLikeStatus() {
-      if (!this.isAuthenticated || !this.post) return;
+      if (!this.post) return;
 
       try {
         const response = await blogAPI.checkLikeStatus(this.post.id);
-        this.isLiked = response.data.is_liked;
+        // response may be { success:true, data: { is_liked, likes_count } }
+        const payload =
+          response.data && response.data.data ? response.data.data : response.data;
+        this.isLiked = !!payload?.is_liked;
+        if (typeof payload?.likes_count === "number") {
+          this.post.likes_count = payload.likes_count;
+        }
       } catch (error) {
         console.error("Error checking like status:", error);
       }
     },
     async toggleLike() {
-      if (!this.isAuthenticated || this.likingPost) return;
+      console.log("toggleLike called");
+      console.log("isAuthenticated:", this.isAuthenticated);
+      console.log("Auth token:", localStorage.getItem("auth_token"));
+      console.log("User data:", localStorage.getItem("user"));
+      console.log("Auth state:", this.auth);
+      console.log("Auth store isAuthenticated:", this.auth?.isAuthenticated);
+
+      if (!this.isAuthenticated) {
+        console.log("User not authenticated, cannot like post");
+        return;
+      }
+
+      if (this.likingPost) {
+        console.log("Already processing like request");
+        return;
+      }
 
       try {
         this.likingPost = true;
+        console.log("Starting like/unlike process, isLiked:", this.isLiked);
 
         if (this.isLiked) {
-          await blogAPI.unlikePost(this.post.id);
-          this.post.likes_count = Math.max(0, (this.post.likes_count || 0) - 1);
+          console.log("Unliking post...");
+          const resp = await blogAPI.unlikePost(this.post.id);
+          // server may return updated counts in resp.data.data or resp.data
+          const payload = resp.data && resp.data.data ? resp.data.data : resp.data;
+          if (payload && typeof payload.likes_count === "number") {
+            this.post.likes_count = payload.likes_count;
+          } else {
+            this.post.likes_count = Math.max(0, (this.post.likes_count || 0) - 1);
+          }
           this.isLiked = false;
         } else {
-          await blogAPI.likePost(this.post.id);
-          this.post.likes_count = (this.post.likes_count || 0) + 1;
+          console.log("Liking post...");
+          const resp = await blogAPI.likePost(this.post.id);
+          const payload = resp.data && resp.data.data ? resp.data.data : resp.data;
+          if (payload && typeof payload.likes_count === "number") {
+            this.post.likes_count = payload.likes_count;
+          } else {
+            this.post.likes_count = (this.post.likes_count || 0) + 1;
+          }
           this.isLiked = true;
         }
+        console.log("Like operation completed successfully");
       } catch (error) {
         console.error("Error toggling like:", error);
       } finally {
@@ -326,7 +417,22 @@ export default {
           content: this.newComment,
         });
 
-        this.comments.unshift(response.data);
+        // API may return { comment: {...}, message } or { success:true, data: {...} }
+        let created = null;
+        if (response.data) {
+          if (response.data.comment) created = response.data.comment;
+          else if (response.data.data) created = response.data.data;
+          else created = response.data;
+        }
+        if (created) {
+          // Ensure comment has user data
+          if (!created.user && this.currentUser) {
+            created.user = { id: this.currentUser.id, name: this.currentUser.name };
+          }
+          this.comments.unshift(created);
+          // increment post comment count if present
+          if (typeof this.post.comments_count === "number") this.post.comments_count += 1;
+        }
         this.newComment = "";
       } catch (error) {
         console.error("Error posting comment:", error);
@@ -355,7 +461,7 @@ export default {
       // User can delete their own comments or if they're the post author
       return (
         comment.user_id === this.currentUser?.id ||
-        this.post?.user_id === this.currentUser?.id
+        this.post?.user?.id === this.currentUser?.id
       );
     },
     formatDate(dateString) {

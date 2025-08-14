@@ -41,8 +41,12 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          // Unauthorized - redirect to login
-          // router.push('/login')
+          // Unauthorized - clear token and redirect to login
+          localStorage.removeItem("auth_token");
+          localStorage.removeItem("user");
+          if (window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
           break;
         case 403:
           // Forbidden - show access denied message

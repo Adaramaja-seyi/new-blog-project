@@ -35,9 +35,14 @@ class LikeController extends Controller
                 'user_id' => $userId
             ]);
 
+            $likesCount = $post->likes()->count();
             return response()->json([
                 'success' => true,
-                'data' => $like,
+                'data' => [
+                    'like' => $like,
+                    'likes_count' => $likesCount,
+                    'is_liked' => true
+                ],
                 'message' => 'Post liked successfully'
             ], 201);
         } catch (\Exception $e) {
@@ -69,8 +74,13 @@ class LikeController extends Controller
 
             $like->delete();
 
+            $likesCount = $post->likes()->count();
             return response()->json([
                 'success' => true,
+                'data' => [
+                    'likes_count' => $likesCount,
+                    'is_liked' => false
+                ],
                 'message' => 'Post unliked successfully'
             ]);
         } catch (\Exception $e) {
@@ -155,9 +165,14 @@ class LikeController extends Controller
                 'user_id' => $userId
             ]);
 
+            $likesCount = $comment->likes()->count();
             return response()->json([
                 'success' => true,
-                'data' => $like,
+                'data' => [
+                    'like' => $like,
+                    'likes_count' => $likesCount,
+                    'is_liked' => true
+                ],
                 'message' => 'Comment liked successfully'
             ], 201);
         } catch (\Exception $e) {
@@ -189,8 +204,13 @@ class LikeController extends Controller
 
             $like->delete();
 
+            $likesCount = $comment->likes()->count();
             return response()->json([
                 'success' => true,
+                'data' => [
+                    'likes_count' => $likesCount,
+                    'is_liked' => false
+                ],
                 'message' => 'Comment unliked successfully'
             ]);
         } catch (\Exception $e) {

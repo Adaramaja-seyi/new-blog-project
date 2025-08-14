@@ -24,7 +24,8 @@ class PostController extends Controller
             $page = (int) request()->query('page', 1);
             $limit = (int) request()->query('limit', 10);
 
-            $query = Post::with(['user', 'comments.user', 'likes', 'category'])->latest();
+            // Eager load minimal relations needed for mapping
+            $query = Post::with(['user', 'comments.user', 'likes', 'category', 'tags'])->latest();
             if ($filterUserId) {
                 $query->where('user_id', $filterUserId);
             }
@@ -43,24 +44,7 @@ class PostController extends Controller
 
             $paginator = $query->paginate($limit, ['*'], 'page', $page);
             $posts = $paginator->getCollection()->map(function ($post) use ($userId) {
-                $isLiked = $post->likes->contains('user_id', $userId);
-                return [
-                    'id' => $post->id,
-                    'title' => $post->title,
-                    'content' => $post->content,
-                    'slug' => $post->slug,
-                    'featured_image' => $post->featured_image,
-                    'is_published' => $post->is_published,
-                    'user' => $post->user,
-                    'category' => $post->category,
-                    'created_at' => $post->created_at,
-                    'updated_at' => $post->updated_at,
-                    'likes_count' => $post->likes->count(),
-                    'comments_count' => $post->comments->count(),
-                    'is_liked' => $isLiked,
-                    'comments' => $post->comments,
-                    'likes' => $post->likes,
-                ];
+                return $this->mapPost($post, $userId);
             });
 
             return response()->json([
@@ -76,6 +60,43 @@ class PostController extends Controller
                 'message' => 'Error fetching posts: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Map a Post model to a compact array for API responses
+     * - include id, title, slug, featured_image, is_published, created_at, updated_at
+     * - include minimal user (id, name)
+     * - include minimal category (id, name)
+     * - include tag ids only
+     * - include counts for likes and comments and is_liked flag for current user
+     */
+    protected function mapPost(Post $post, $currentUserId = null)
+    {
+        $isLiked = $currentUserId ? $post->likes->contains('user_id', $currentUserId) : false;
+
+        return [
+            'id' => $post->id,
+            'title' => $post->title,
+            'slug' => $post->slug,
+            'excerpt' => $post->excerpt ?? null,
+            'featured_image' => $post->featured_image,
+            'is_published' => $post->is_published,
+            'created_at' => $post->created_at,
+            'updated_at' => $post->updated_at,
+            'user' => $post->user ? [
+                'id' => $post->user->id,
+                'name' => $post->user->name,
+            ] : null,
+            'category' => $post->category ? [
+                'id' => $post->category->id,
+                'name' => $post->category->name,
+            ] : null,
+            // tags: return array of ids
+            'tags' => $post->tags ? $post->tags->pluck('id')->toArray() : [],
+            'likes_count' => $post->likes->count(),
+            'comments_count' => $post->comments->count(),
+            'is_liked' => $isLiked,
+        ];
     }
 
     public function store(Request $request)
@@ -144,12 +165,11 @@ class PostController extends Controller
                 }
             }
 
-            // Load the post with relationships for the response
-            $post->load(['user', 'category', 'tags']);
-
+            // Load minimal relationships and return compact post
+            $post->load(['user', 'category', 'tags', 'comments', 'likes']);
             return response()->json([
                 'success' => true,
-                'data' => $post,
+                'data' => $this->mapPost($post, Auth::id()),
                 'message' => 'Post created successfully'
             ], 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -172,9 +192,40 @@ class PostController extends Controller
     public function show(Post $post)
     {
         try {
+            // Load full relationships needed for the detail view
+            $post->load(['user', 'comments.user', 'likes', 'category', 'tags']);
+
+            $isLiked = Auth::id() ? $post->likes->contains('user_id', Auth::id()) : false;
+
+            $detail = [
+                'id' => $post->id,
+                'title' => $post->title,
+                'content' => $post->content,
+                'excerpt' => $post->excerpt ?? null,
+                'slug' => $post->slug,
+                'featured_image' => $post->featured_image,
+                'is_published' => $post->is_published,
+                'created_at' => $post->created_at,
+                'updated_at' => $post->updated_at,
+                'user' => $post->user ? [
+                    'id' => $post->user->id,
+                    'name' => $post->user->name,
+                    'bio' => $post->user->bio ?? null,
+                ] : null,
+                'category' => $post->category ? [
+                    'id' => $post->category->id,
+                    'name' => $post->category->name,
+                    'slug' => $post->category->slug ?? null,
+                ] : null,
+                'tags' => $post->tags ? $post->tags->pluck('id')->toArray() : [],
+                'likes_count' => $post->likes->count(),
+                'comments_count' => $post->comments->count(),
+                'is_liked' => $isLiked,
+            ];
+
             return response()->json([
                 'success' => true,
-                'data' => $post->load(['user', 'comments.user', 'likes'])
+                'data' => $detail
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -246,12 +297,11 @@ class PostController extends Controller
                 }
             }
 
-            // Load the post with relationships for the response
-            $post->load(['user', 'category', 'tags']);
-
+            // Load minimal relationships and return compact post
+            $post->load(['user', 'category', 'tags', 'comments', 'likes']);
             return response()->json([
                 'success' => true,
-                'data' => $post,
+                'data' => $this->mapPost($post, Auth::id()),
                 'message' => 'Post updated successfully'
             ]);
         } catch (\Exception $e) {
@@ -394,8 +444,13 @@ class PostController extends Controller
                         'name' => $post->user->name ?? 'Unknown',
                         'avatar' => $post->user->avatar ?? null
                     ];
-
-                    // Only add ID if user exists
+                    // Load minimal relationships and return compact post
+                    $post->load(['user', 'category', 'tags', 'comments', 'likes']);
+                    return response()->json([
+                        'success' => true,
+                        'data' => $this->mapPost($post, Auth::id()),
+                        'message' => 'Post updated successfully'
+                    ]);
                     if ($post->user && property_exists($post->user, 'id')) {
                         $userData['id'] = $post->user->id;
                     }

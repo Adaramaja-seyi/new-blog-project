@@ -148,6 +148,24 @@ const routes = [
       requiresAuth: true,
     },
   },
+  // Public user profile (view by id)
+  {
+    path: "/user/:id",
+    name: "UserProfile",
+    component: Profile,
+    meta: {
+      title: "User Profile",
+    },
+  },
+  // Category listing route (uses Home view and reads slug param)
+  {
+    path: "/category/:slug",
+    name: "Category",
+    component: Home,
+    meta: {
+      title: "Category",
+    },
+  },
 ];
 
 const router = createRouter({
