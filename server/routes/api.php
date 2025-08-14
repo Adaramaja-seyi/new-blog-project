@@ -37,6 +37,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Posts (authenticated)
     Route::apiResource('posts', PostController::class)->except(['index', 'show']);
+    Route::post('posts/{post}/update', [PostController::class, 'update']); // Special route for file uploads
+    Route::post('upload-image', [PostController::class, 'uploadImage']); // Image upload endpoint
     Route::get('posts/search/{query}', [PostController::class, 'search']);
     Route::get('posts/tag/{tag}', [PostController::class, 'postsByTag']);
     Route::get('posts/status/{status}', [PostController::class, 'postsByStatus']);

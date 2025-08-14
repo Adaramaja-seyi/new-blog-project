@@ -18,6 +18,12 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // If sending FormData, remove Content-Type so browser sets it with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
+
     return config;
   },
   (error) => {
@@ -35,8 +41,12 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          // Unauthorized - redirect to login
-          // router.push('/login')
+          // Unauthorized - clear token and redirect to login
+          localStorage.removeItem("auth_token");
+          localStorage.removeItem("user");
+          if (window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
           break;
         case 403:
           // Forbidden - show access denied message
@@ -68,6 +78,15 @@ export const blogAPI = {
   createPost: (data) => api.post("/posts", data),
   updatePost: (id, data) => api.put(`/posts/${id}`, data),
   deletePost: (id) => api.delete(`/posts/${id}`),
+  uploadImage: (imageFile) => {
+    const formData = new FormData();
+    formData.append("image", imageFile);
+    return api.post("/upload-image", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
   searchPosts: (query) => api.get(`/posts/search/${query}`),
   getPostsByTag: (tag) => api.get(`/posts/tag/${tag}`),
   getPostsByStatus: (status) => api.get(`/posts/status/${status}`),

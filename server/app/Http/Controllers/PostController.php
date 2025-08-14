@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class PostController extends Controller
@@ -22,7 +24,8 @@ class PostController extends Controller
             $page = (int) request()->query('page', 1);
             $limit = (int) request()->query('limit', 10);
 
-            $query = Post::with(['user', 'comments.user', 'likes', 'category'])->latest();
+            // Eager load minimal relations needed for mapping
+            $query = Post::with(['user', 'comments.user', 'likes', 'category', 'tags'])->latest();
             if ($filterUserId) {
                 $query->where('user_id', $filterUserId);
             }
@@ -41,24 +44,7 @@ class PostController extends Controller
 
             $paginator = $query->paginate($limit, ['*'], 'page', $page);
             $posts = $paginator->getCollection()->map(function ($post) use ($userId) {
-                $isLiked = $post->likes->contains('user_id', $userId);
-                return [
-                    'id' => $post->id,
-                    'title' => $post->title,
-                    'content' => $post->content,
-                    'slug' => $post->slug,
-                    'featured_image' => $post->featured_image,
-                    'is_published' => $post->is_published,
-                    'user' => $post->user,
-                    'category' => $post->category,
-                    'created_at' => $post->created_at,
-                    'updated_at' => $post->updated_at,
-                    'likes_count' => $post->likes->count(),
-                    'comments_count' => $post->comments->count(),
-                    'is_liked' => $isLiked,
-                    'comments' => $post->comments,
-                    'likes' => $post->likes,
-                ];
+                return $this->mapPost($post, $userId);
             });
 
             return response()->json([
@@ -76,14 +62,81 @@ class PostController extends Controller
         }
     }
 
+    /**
+     * Map a Post model to a compact array for API responses
+     * - include id, title, slug, featured_image, is_published, created_at, updated_at
+     * - include minimal user (id, name)
+     * - include minimal category (id, name)
+     * - include tag ids only
+     * - include counts for likes and comments and is_liked flag for current user
+     */
+    protected function mapPost(Post $post, $currentUserId = null)
+    {
+        $isLiked = $currentUserId ? $post->likes->contains('user_id', $currentUserId) : false;
+
+        return [
+            'id' => $post->id,
+            'title' => $post->title,
+            'slug' => $post->slug,
+            'excerpt' => $post->excerpt ?? null,
+            'featured_image' => $post->featured_image,
+            'is_published' => $post->is_published,
+            'created_at' => $post->created_at,
+            'updated_at' => $post->updated_at,
+            'user' => $post->user ? [
+                'id' => $post->user->id,
+                'name' => $post->user->name,
+            ] : null,
+            'category' => $post->category ? [
+                'id' => $post->category->id,
+                'name' => $post->category->name,
+            ] : null,
+            // tags: return array of ids
+            'tags' => $post->tags ? $post->tags->pluck('id')->toArray() : [],
+            'likes_count' => $post->likes->count(),
+            'comments_count' => $post->comments->count(),
+            'is_liked' => $isLiked,
+        ];
+    }
+
     public function store(Request $request)
     {
         try {
+            // Debug: Log what Laravel receives
+            Log::info('Request method: ' . $request->method());
+            Log::info('Content-Type: ' . $request->header('Content-Type'));
+            Log::info('All request data:', $request->all());
+            Log::info('Has file: ' . ($request->hasFile('featured_image') ? 'yes' : 'no'));
+            Log::info('Request inputs:', [
+                'title' => $request->input('title'),
+                'content' => $request->input('content'),
+                'excerpt' => $request->input('excerpt'),
+                'category_id' => $request->input('category_id'),
+                'status' => $request->input('status'),
+                'is_published' => $request->input('is_published'),
+            ]);
+
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'content' => 'required|string',
-                'is_published' => 'boolean'
+                'excerpt' => 'nullable|string',
+                'category_id' => 'nullable|integer',
+                'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+                'status' => 'nullable|string|in:draft,published',
+                'meta_title' => 'nullable|string|max:255',
+                'meta_description' => 'nullable|string|max:160',
+                'is_published' => 'nullable|boolean',
+                'tags' => 'nullable|string' // JSON string of tag IDs
             ]);
+
+            // Handle image upload
+            $imagePath = null;
+            if ($request->hasFile('featured_image')) {
+                $image = $request->file('featured_image');
+                $imageName = time() . '_' . $image->getClientOriginalName();
+                $imagePath = $image->storeAs('posts', $imageName, 'public');
+                $validated['featured_image'] = '/storage/' . $imagePath;
+            }
 
             // Generate slug from title
             $slug = Str::slug($validated['title']);
@@ -98,17 +151,37 @@ class PostController extends Controller
 
             $postData = array_merge($validated, [
                 'slug' => $slug,
-                'user_id' => Auth::id()
+                'user_id' => Auth::id(),
+                'published_at' => $validated['status'] === 'published' ? now() : null
             ]);
 
             $post = Post::create($postData);
 
+            // Handle tags if provided
+            if ($request->has('tags') && !empty($validated['tags'])) {
+                $tagIds = json_decode($validated['tags'], true);
+                if (is_array($tagIds)) {
+                    $post->tags()->sync($tagIds);
+                }
+            }
+
+            // Load minimal relationships and return compact post
+            $post->load(['user', 'category', 'tags', 'comments', 'likes']);
             return response()->json([
                 'success' => true,
-                'data' => $post,
+                'data' => $this->mapPost($post, Auth::id()),
                 'message' => 'Post created successfully'
             ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed:', $e->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
+            Log::error('Post creation error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
                 'message' => 'Error creating post: ' . $e->getMessage()
@@ -119,9 +192,40 @@ class PostController extends Controller
     public function show(Post $post)
     {
         try {
+            // Load full relationships needed for the detail view
+            $post->load(['user', 'comments.user', 'likes', 'category', 'tags']);
+
+            $isLiked = Auth::id() ? $post->likes->contains('user_id', Auth::id()) : false;
+
+            $detail = [
+                'id' => $post->id,
+                'title' => $post->title,
+                'content' => $post->content,
+                'excerpt' => $post->excerpt ?? null,
+                'slug' => $post->slug,
+                'featured_image' => $post->featured_image,
+                'is_published' => $post->is_published,
+                'created_at' => $post->created_at,
+                'updated_at' => $post->updated_at,
+                'user' => $post->user ? [
+                    'id' => $post->user->id,
+                    'name' => $post->user->name,
+                    'bio' => $post->user->bio ?? null,
+                ] : null,
+                'category' => $post->category ? [
+                    'id' => $post->category->id,
+                    'name' => $post->category->name,
+                    'slug' => $post->category->slug ?? null,
+                ] : null,
+                'tags' => $post->tags ? $post->tags->pluck('id')->toArray() : [],
+                'likes_count' => $post->likes->count(),
+                'comments_count' => $post->comments->count(),
+                'is_liked' => $isLiked,
+            ];
+
             return response()->json([
                 'success' => true,
-                'data' => $post->load(['user', 'comments.user', 'likes'])
+                'data' => $detail
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -145,8 +249,31 @@ class PostController extends Controller
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'content' => 'required|string',
-                'is_published' => 'boolean'
+                'excerpt' => 'nullable|string',
+                'category_id' => 'nullable|integer|exists:categories,id',
+                'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+                'status' => 'nullable|string|in:draft,published',
+                'meta_title' => 'nullable|string|max:255',
+                'meta_description' => 'nullable|string|max:160',
+                'is_published' => 'boolean',
+                'tags' => 'nullable|string' // JSON string of tag IDs
             ]);
+
+            // Handle image upload
+            if ($request->hasFile('featured_image')) {
+                // Delete old image if it exists
+                if ($post->featured_image) {
+                    $oldImagePath = str_replace('/storage/', '', $post->featured_image);
+                    if (Storage::disk('public')->exists($oldImagePath)) {
+                        Storage::disk('public')->delete($oldImagePath);
+                    }
+                }
+
+                $image = $request->file('featured_image');
+                $imageName = time() . '_' . $image->getClientOriginalName();
+                $imagePath = $image->storeAs('posts', $imageName, 'public');
+                $validated['featured_image'] = '/storage/' . $imagePath;
+            }
 
             // Generate new slug if title changed
             if (isset($validated['title']) && $validated['title'] !== $post->getAttribute('title')) {
@@ -162,9 +289,19 @@ class PostController extends Controller
 
             $post->update($validated);
 
+            // Handle tags if provided
+            if ($request->has('tags') && !empty($validated['tags'])) {
+                $tagIds = json_decode($validated['tags'], true);
+                if (is_array($tagIds)) {
+                    $post->tags()->sync($tagIds);
+                }
+            }
+
+            // Load minimal relationships and return compact post
+            $post->load(['user', 'category', 'tags', 'comments', 'likes']);
             return response()->json([
                 'success' => true,
-                'data' => $post,
+                'data' => $this->mapPost($post, Auth::id()),
                 'message' => 'Post updated successfully'
             ]);
         } catch (\Exception $e) {
@@ -186,6 +323,14 @@ class PostController extends Controller
                 ], 403);
             }
 
+            // Delete associated image if it exists
+            if ($post->featured_image) {
+                $imagePath = str_replace('/storage/', '', $post->featured_image);
+                if (Storage::disk('public')->exists($imagePath)) {
+                    Storage::disk('public')->delete($imagePath);
+                }
+            }
+
             $post->delete();
 
             return response()->json([
@@ -196,6 +341,44 @@ class PostController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error deleting post: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Upload an image for posts
+     */
+    public function uploadImage(Request $request)
+    {
+        try {
+            $request->validate([
+                'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048'
+            ]);
+
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('posts', $filename, 'public');
+                $imageUrl = '/storage/' . $path;
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'url' => $imageUrl,
+                        'path' => $path
+                    ],
+                    'message' => 'Image uploaded successfully'
+                ], 200);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No image file found'
+            ], 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error uploading image: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -261,8 +444,13 @@ class PostController extends Controller
                         'name' => $post->user->name ?? 'Unknown',
                         'avatar' => $post->user->avatar ?? null
                     ];
-
-                    // Only add ID if user exists
+                    // Load minimal relationships and return compact post
+                    $post->load(['user', 'category', 'tags', 'comments', 'likes']);
+                    return response()->json([
+                        'success' => true,
+                        'data' => $this->mapPost($post, Auth::id()),
+                        'message' => 'Post updated successfully'
+                    ]);
                     if ($post->user && property_exists($post->user, 'id')) {
                         $userData['id'] = $post->user->id;
                     }

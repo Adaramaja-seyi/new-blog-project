@@ -1,256 +1,74 @@
 <template>
   <div class="dashboard-posts">
-    <!-- Header Section -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h2>My Posts</h2>
-        <p class="text-muted mb-0">Manage your blog posts and drafts</p>
-      </div>
-      <router-link to="/dashboard/create" class="btn btn-primary">
-        <i class="bi bi-plus-circle me-2"></i>
-        Create New Post
-      </router-link>
-    </div>
+    <DashboardPostsHeader />
+    <DashboardPostsFilters
+      :categories="categories"
+      :status="statusFilter"
+      :category="categoryFilter"
+      :search="searchQuery"
+      @update:status="onStatusChange"
+      @update:category="onCategoryChange"
+      @update:search="onSearchChange"
+    />
 
-    <!-- Filters and Search -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="row align-items-center">
-          <div class="col-md-4 mb-3 mb-md-0">
-            <label class="form-label">Status Filter</label>
-            <select v-model="statusFilter" class="form-select">
-              <option value="">All Posts</option>
-              <option value="published">Published</option>
-              <option value="draft">Drafts</option>
-              <option value="pending">Pending</option>
-            </select>
-          </div>
-          <div class="col-md-4 mb-3 mb-md-0">
-            <label class="form-label">Category</label>
-            <select v-model="categoryFilter" class="form-select">
-              <option value="">All Categories</option>
-              <option
-                v-for="category in categories"
-                :key="category.id"
-                :value="category.id"
-              >
-                {{ category.name }}
-              </option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Search</label>
-            <div class="input-group">
-              <span class="input-group-text">
-                <i class="bi bi-search"></i>
-              </span>
-              <input
-                type="text"
-                class="form-control"
-                placeholder="Search posts..."
-                v-model="searchQuery"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Posts Table -->
-    <div class="card">
-      <div
-        class="card-header d-flex justify-content-between align-items-center"
-      >
-        <h5 class="mb-0">Posts ({{ filteredPosts.length }})</h5>
-        <div class="d-flex gap-2">
-          <button
-            @click="bulkAction('publish')"
-            :disabled="!selectedPosts.length"
-            class="btn btn-outline-success btn-sm"
-          >
-            <i class="bi bi-check-circle me-1"></i>
-            Publish Selected
-          </button>
-          <button
-            @click="bulkAction('delete')"
-            :disabled="!selectedPosts.length"
-            class="btn btn-outline-danger btn-sm"
-          >
-            <i class="bi bi-trash me-1"></i>
-            Delete Selected
-          </button>
-        </div>
-      </div>
-      <div class="card-body p-0">
-        <div v-if="loading" class="loading-spinner">
-          <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-          </div>
-        </div>
-
-        <div v-else-if="filteredPosts.length > 0" class="table">
-          <div class="table-header">
-            <div class="row align-items-center">
-              <div class="col-1">
-                <input
-                  type="checkbox"
-                  class="form-check-input"
-                  :checked="allSelected"
-                  @change="toggleSelectAll"
-                />
-              </div>
-              <div class="col-4">Title</div>
-              <div class="col-2">Category</div>
-              <div class="col-2">Status</div>
-              <div class="col-1">Views</div>
-              <div class="col-2">Actions</div>
-            </div>
-          </div>
-          <div class="table-body">
-            <div
-              v-for="post in paginatedPosts"
-              :key="post.id"
-              class="table-row"
-            >
-              <div class="row align-items-center">
-                <div class="col-1">
-                  <input
-                    type="checkbox"
-                    class="form-check-input"
-                    :value="post.id"
-                    v-model="selectedPosts"
-                  />
-                </div>
-                <div class="col-4">
-                  <h6 class="mb-1">{{ post.title }}</h6>
-                  <small class="text-muted">{{
-                    formatDate(post.created_at)
-                  }}</small>
-                </div>
-                <div class="col-2">
-                  <span class="badge bg-light text-dark">{{
-                    post.category?.name || "Uncategorized"
-                  }}</span>
-                </div>
-                <div class="col-2">
-                  <span class="badge" :class="getStatusClass(post.status)">
-                    {{ post.status }}
-                  </span>
-                </div>
-                <div class="col-1">
-                  <span class="text-muted">{{ post.views || 0 }}</span>
-                </div>
-                <div class="col-2">
-                  <div class="btn-group btn-group-sm">
-                    <router-link
-                      :to="{ name: 'PostDetail', params: { slug: post.slug } }"
-                      class="btn btn-light"
-                      title="View"
-                    >
-                      <i class="bi bi-eye"></i>
-                    </router-link>
-                    <router-link
-                      :to="{ name: 'CreatePost', query: { edit: post.id } }"
-                      class="btn btn-light"
-                      title="Edit"
-                    >
-                      <i class="bi bi-pencil"></i>
-                    </router-link>
-                    <button
-                      @click="deletePost(post.id)"
-                      class="btn btn-light text-danger"
-                      title="Delete"
-                    >
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="empty-state">
-          <div class="empty-icon">
-            <i class="bi bi-file-text"></i>
-          </div>
-          <h5>No posts found</h5>
-          <p>Create your first blog post to get started!</p>
-          <router-link to="/dashboard/create" class="btn btn-primary">
-            Create Your First Post
-          </router-link>
-        </div>
-      </div>
-    </div>
-
-    <!-- Pagination -->
-    <div
-      v-if="filteredPosts.length > postsPerPage"
-      class="d-flex justify-content-center mt-4"
-    >
-      <nav>
-        <ul class="pagination">
-          <li class="page-item" :class="{ disabled: currentPage === 1 }">
-            <button @click="currentPage--" class="page-link">Previous</button>
-          </li>
-          <li
-            v-for="page in totalPages"
-            :key="page"
-            class="page-item"
-            :class="{ active: page === currentPage }"
-          >
-            <button @click="currentPage = page" class="page-link">
-              {{ page }}
-            </button>
-          </li>
-          <li
-            class="page-item"
-            :class="{ disabled: currentPage === totalPages }"
-          >
-            <button @click="currentPage++" class="page-link">Next</button>
-          </li>
-        </ul>
-      </nav>
-    </div>
+    <DashboardPostsTable
+      :posts="paginatedPosts"
+      :selectedPosts="selectedPosts"
+      :loading="loading"
+      :allSelected="allSelected"
+      @toggle-select-all="toggleSelectAll"
+      @toggle-post-select="togglePostSelect"
+      @delete-post="deletePost"
+      @bulk-action="bulkAction"
+    />
+    <DashboardPostsPagination
+      :total="filteredPosts?.length || 0"
+      :perPage="postsPerPage"
+      :current="currentPage"
+      @change-page="changePage"
+    />
   </div>
 </template>
 
 <script>
-import { usePosts } from "@/stores/posts.js";
-import { useCategoriesStore } from "@/stores/categories";
+import DashboardPostsHeader from "@/components/DashboardPosts/DashboardPostsHeader.vue";
+import DashboardPostsFilters from "@/components/DashboardPosts/DashboardPostsFilters.vue";
+import DashboardPostsTable from "@/components/DashboardPosts/DashboardPostsTable.vue";
+import DashboardPostsPagination from "@/components/DashboardPosts/DashboardPostsPagination.vue";
+import { blogAPI } from "../api.js";
 
 export default {
   name: "DashboardPosts",
+  components: {
+    DashboardPostsHeader,
+    DashboardPostsFilters,
+    DashboardPostsTable,
+    DashboardPostsPagination,
+  },
   data() {
     return {
+      posts: [],
+      categories: [],
       selectedPosts: [],
       statusFilter: "",
       categoryFilter: "",
       searchQuery: "",
       currentPage: 1,
       postsPerPage: 10,
-      categories: [],
+      loading: false,
     };
   },
   computed: {
-    postsStore() {
-      return usePosts();
-    },
-    posts() {
-      return this.postsStore.posts;
-    },
-    loading() {
-      return this.postsStore.loading;
-    },
     filteredPosts() {
       let filtered = this.posts;
+      if (!Array.isArray(filtered)) {
+        return [];
+      }
       if (this.statusFilter) {
         filtered = filtered.filter((post) => post.status === this.statusFilter);
       }
       if (this.categoryFilter) {
-        filtered = filtered.filter(
-          (post) => post.category_id == this.categoryFilter
-        );
+        filtered = filtered.filter((post) => post.category_id == this.categoryFilter);
       }
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
@@ -264,158 +82,181 @@ export default {
       return filtered;
     },
     paginatedPosts() {
+      if (!Array.isArray(this.filteredPosts)) {
+        return [];
+      }
       const start = (this.currentPage - 1) * this.postsPerPage;
       const end = start + this.postsPerPage;
       return this.filteredPosts.slice(start, end);
     },
-    totalPages() {
-      return Math.ceil(this.filteredPosts.length / this.postsPerPage);
-    },
     allSelected() {
       return (
         this.paginatedPosts.length > 0 &&
-        this.paginatedPosts.every((post) =>
-          this.selectedPosts.includes(post.id)
-        )
+        this.paginatedPosts.every((post) => this.selectedPosts.includes(post.id))
       );
     },
   },
   mounted() {
-    this.postsStore.fetchPosts();
-    this.loadCategories();
+    this.initializePage();
   },
   methods: {
+    async initializePage() {
+      try {
+        await this.loadPosts();
+        await this.loadCategories();
+      } catch (error) {
+        console.error("Error initializing dashboard posts:", error);
+      }
+    },
     async loadPosts() {
-      const filters = {};
-      if (this.statusFilter) filters.status = this.statusFilter;
-      if (this.categoryFilter) filters.category_id = this.categoryFilter;
-      if (this.searchQuery) filters.search = this.searchQuery;
-      await this.postsStore.fetchPosts(filters);
+      this.loading = true;
+      try {
+        const filters = {};
+        if (this.statusFilter) filters.status = this.statusFilter;
+        if (this.categoryFilter) filters.category_id = this.categoryFilter;
+        if (this.searchQuery) filters.search = this.searchQuery;
+
+        const response = await blogAPI.getDashboardPosts(filters);
+        this.posts = response.data || [];
+      } catch (error) {
+        console.error("Error loading posts:", error);
+        this.posts = [];
+      } finally {
+        this.loading = false;
+      }
     },
     async loadCategories() {
       try {
-        const categoriesStore = useCategoriesStore();
-        await categoriesStore.fetchCategories();
-        this.categories = categoriesStore.categories;
+        const response = await blogAPI.getCategories();
+        // Ensure we extract just the data array, not the whole response object
+        this.categories = response.data?.data || response.data || [];
       } catch (error) {
         console.error("Error loading categories:", error);
-      }
-    },
-    formatDate(dateString) {
-      if (!dateString) return "";
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    },
-    getStatusClass(status) {
-      switch (status) {
-        case "published":
-          return "bg-success";
-        case "draft":
-          return "bg-warning";
-        case "pending":
-          return "bg-info";
-        default:
-          return "bg-secondary";
+        this.categories = [];
       }
     },
     async deletePost(postId) {
       if (confirm("Are you sure you want to delete this post?")) {
-        const result = await this.postsStore.deletePost(postId);
-        if (result.success) {
+        try {
+          await blogAPI.deletePost(postId);
           this.selectedPosts = this.selectedPosts.filter((id) => id !== postId);
-        } else {
+          this.loadPosts(); // Reload posts after deletion
+        } catch (error) {
+          console.error("Error deleting post:", error);
           alert("Failed to delete post. Please try again.");
         }
       }
     },
-    toggleSelectAll() {
-      if (this.allSelected) {
-        this.selectedPosts = [];
+    handleFilterChange(filters) {
+      this.statusFilter = filters.status;
+      this.categoryFilter = filters.category;
+      this.searchQuery = filters.search;
+      this.currentPage = 1; // Reset to first page when filtering
+      this.loadPosts();
+    },
+    handlePageChange(page) {
+      this.currentPage = page;
+    },
+    handlePostToggle(postId) {
+      const index = this.selectedPosts.indexOf(postId);
+      if (index > -1) {
+        this.selectedPosts.splice(index, 1);
       } else {
-        this.selectedPosts = this.paginatedPosts.map((post) => post.id);
+        this.selectedPosts.push(postId);
       }
     },
-    async bulkAction(action) {
-      if (!this.selectedPosts.length) return;
-      if (action === "delete") {
-        for (const postId of this.selectedPosts) {
-          await this.deletePost(postId);
-        }
-        this.selectedPosts = [];
-      } else if (action === "publish") {
-        for (const postId of this.selectedPosts) {
-          const post = this.posts.find((p) => p.id === postId);
-          if (post) {
-            await this.postsStore.updatePost(postId, {
-              ...post,
-              status: "published",
-            });
+    handleToggleAll() {
+      if (this.allSelected) {
+        // Deselect all visible posts
+        this.selectedPosts = this.selectedPosts.filter(
+          (postId) => !this.paginatedPosts.some((post) => post.id === postId)
+        );
+      } else {
+        // Select all visible posts
+        this.paginatedPosts.forEach((post) => {
+          if (!this.selectedPosts.includes(post.id)) {
+            this.selectedPosts.push(post.id);
           }
-        }
-        this.selectedPosts = [];
+        });
       }
     },
-  },
-  watch: {
-    statusFilter() {
+    async handleBulkDelete() {
+      if (this.selectedPosts.length === 0) {
+        alert("Please select posts to delete");
+        return;
+      }
+      if (
+        !confirm(`Are you sure you want to delete ${this.selectedPosts.length} posts?`)
+      ) {
+        return;
+      }
+      try {
+        await blogAPI.bulkDeletePosts({ ids: this.selectedPosts });
+        this.selectedPosts = [];
+        this.loadPosts(); // Reload posts after deletion
+      } catch (error) {
+        console.error("Error deleting posts:", error);
+        alert("Error deleting posts. Please try again.");
+      }
+    },
+    async handleBulkUpdate(status) {
+      if (this.selectedPosts.length === 0) {
+        alert("Please select posts to update");
+        return;
+      }
+      try {
+        await blogAPI.bulkUpdatePosts({
+          ids: this.selectedPosts,
+          data: { status },
+        });
+        this.selectedPosts = [];
+        this.loadPosts(); // Reload posts after update
+      } catch (error) {
+        console.error("Error updating posts:", error);
+        alert("Error updating posts. Please try again.");
+      }
+    },
+    isPostSelected(postId) {
+      return this.selectedPosts.includes(postId);
+    },
+    // Methods expected by child components
+    onStatusChange(status) {
+      this.statusFilter = status;
       this.currentPage = 1;
       this.loadPosts();
     },
-    categoryFilter() {
+    onCategoryChange(categoryId) {
+      this.categoryFilter = categoryId;
       this.currentPage = 1;
       this.loadPosts();
     },
-    searchQuery() {
+    onSearchChange(query) {
+      this.searchQuery = query;
       this.currentPage = 1;
-      clearTimeout(this.searchTimeout);
-      this.searchTimeout = setTimeout(() => {
-        this.loadPosts();
-      }, 500);
+      this.loadPosts();
+    },
+    toggleSelectAll() {
+      this.handleToggleAll();
+    },
+    togglePostSelect(postId) {
+      this.handlePostToggle(postId);
+    },
+    bulkAction(action, value = null) {
+      if (action === "delete") {
+        this.handleBulkDelete();
+      } else if (action === "updateStatus" && value) {
+        this.handleBulkUpdate(value);
+      }
+    },
+    changePage(page) {
+      this.handlePageChange(page);
     },
   },
 };
 </script>
 
-<style scoped lang="scss">
-.dashboard-posts {
-  .table {
-    .table-row {
-      &:hover {
-        background-color: var(--bg-secondary);
-      }
-    }
-  }
-
-  .form-check-input {
-    &:checked {
-      background-color: var(--primary-blue);
-      border-color: var(--primary-blue);
-    }
-  }
-
-  .badge {
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-}
-
-// Responsive adjustments
-@media (max-width: 768px) {
-  .dashboard-posts {
-    .table {
-      .table-row {
-        .row {
-          .col-2,
-          .col-1 {
-            margin-bottom: 0.5rem;
-          }
-        }
-      }
-    }
-  }
+<style scoped>
+.dashboard-posts-page {
+  padding: 1rem;
 }
 </style>

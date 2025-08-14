@@ -36,7 +36,6 @@ class DashboardController extends Controller
                 'total_likes' => Like::whereHas('post', function ($query) use ($userId) {
                     $query->where('user_id', $userId);
                 })->count(),
-                'total_views' => Post::where('user_id', $userId)->sum('views') ?? 0,
             ];
 
             // Recent activity

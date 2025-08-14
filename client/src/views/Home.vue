@@ -3,51 +3,13 @@
     <!-- Hero Section -->
     <section class="hero-section">
       <div class="container">
-        <div v-if="featuredPost" class="hero-content">
-          <div class="row align-items-center">
-            <div class="col-lg-6">
-              <div class="hero-text">
-                <div class="category-tag mb-3">
-                  {{ featuredPost?.category?.name || "Featured" }}
-                </div>
-                <h1 class="hero-title">{{ featuredPost.title }}</h1>
-                <p class="hero-subtitle">{{ featuredPost.excerpt }}</p>
-                <div class="hero-meta mb-4">
-                  <span class="hero-author">
-                    <i class="bi bi-person-circle me-1"></i>
-                    {{
-                      featuredPost?.user?.name ||
-                      featuredPost?.author ||
-                      "Unknown Author"
-                    }}
-                  </span>
-                  <span class="hero-date">
-                    <i class="bi bi-calendar3 me-1"></i>
-                    {{ formatDate(featuredPost.created_at) }}
-                  </span>
-                </div>
-                <router-link
-                  :to="{
-                    name: 'PostDetail',
-                    params: { slug: featuredPost.slug },
-                  }"
-                  class="btn btn-primary btn-lg"
-                >
-                  Read More
-                  <i class="bi bi-arrow-right ms-2"></i>
-                </router-link>
-              </div>
-            </div>
-            <div class="col-lg-6">
-              <div class="hero-image">
-                <img
-                  :src="featuredPost.featured_image || '/placeholder-hero.jpg'"
-                  :alt="featuredPost.title"
-                  class="img-fluid rounded"
-                />
-              </div>
-            </div>
-          </div>
+        <div class="hero-content text-center py-5">
+          <h1 class="hero-title mb-3">Welcome to Zura Blog</h1>
+          <p class="hero-description lead mb-4">
+            Discover insightful articles, tips, and stories from our vibrant community.
+            Whether you're here to learn, share, or connect, Zura Blog is your space for
+            inspiration and growth.
+          </p>
         </div>
       </div>
     </section>
@@ -105,11 +67,7 @@
         <!-- Posts Grid -->
         <div v-else-if="filteredPosts.length > 0">
           <div class="post-grid">
-            <PostCard
-              v-for="post in paginatedPosts"
-              :key="post.id"
-              :post="post"
-            />
+            <PostCard v-for="post in paginatedPosts" :key="post.id" :post="post" />
           </div>
 
           <!-- Pagination -->
@@ -132,18 +90,11 @@
                   class="page-item"
                   :class="{ active: page === currentPage }"
                 >
-                  <a
-                    class="page-link"
-                    href="#"
-                    @click.prevent="changePage(page)"
-                  >
+                  <a class="page-link" href="#" @click.prevent="changePage(page)">
                     {{ page }}
                   </a>
                 </li>
-                <li
-                  class="page-item"
-                  :class="{ disabled: currentPage === totalPages }"
-                >
+                <li class="page-item" :class="{ disabled: currentPage === totalPages }">
                   <a
                     class="page-link"
                     href="#"
@@ -214,9 +165,7 @@ export default {
 
       // Filter by category
       if (this.selectedCategory) {
-        filtered = filtered.filter(
-          (post) => post.category_id == this.selectedCategory
-        );
+        filtered = filtered.filter((post) => post.category.id == this.selectedCategory);
       }
 
       return filtered;
@@ -248,13 +197,9 @@ export default {
     async fetchPosts() {
       try {
         this.loading = true;
-        const filters = {};
-        if (this.searchQuery) filters.search = this.searchQuery;
-        if (this.selectedCategory) filters.category_id = this.selectedCategory;
-
-        const response = await blogAPI.getPosts(filters);
+        // Always fetch all posts, no filters
+        const response = await blogAPI.getPosts();
         this.posts = response.data.data;
-
         // Set the most recent or most viewed post as featured
         if (this.posts.length > 0) {
           this.featuredPost =
@@ -262,7 +207,6 @@ export default {
         }
       } catch (error) {
         console.error("Error fetching posts:", error);
-        // Fallback to empty array on error
         this.posts = [];
         this.featuredPost = null;
       } finally {
@@ -272,24 +216,24 @@ export default {
     async fetchCategories() {
       try {
         const response = await blogAPI.getCategories();
-        this.categories = response.data;
+        // Support both { data: [...] } and [...]
+        if (Array.isArray(response.data)) {
+          this.categories = response.data;
+        } else if (response.data && Array.isArray(response.data.data)) {
+          this.categories = response.data.data;
+        } else {
+          this.categories = [];
+        }
       } catch (error) {
         console.error("Error fetching categories:", error);
-        // Fallback to empty array on error
         this.categories = [];
       }
     },
     handleSearch() {
       this.currentPage = 1; // Reset to first page when searching
-      // Debounce search to avoid too many API calls
-      clearTimeout(this.searchTimeout);
-      this.searchTimeout = setTimeout(() => {
-        this.fetchPosts();
-      }, 500);
     },
     handleCategoryChange() {
       this.currentPage = 1; // Reset to first page when changing category
-      this.fetchPosts();
     },
     changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
@@ -320,11 +264,7 @@ export default {
 <style scoped lang="scss">
 .home-page {
   .hero-section {
-    background: linear-gradient(
-      135deg,
-      var(--bg-primary) 0%,
-      var(--bg-secondary) 100%
-    );
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
     padding: var(--section-spacing) 0;
     margin-bottom: var(--section-spacing);
 

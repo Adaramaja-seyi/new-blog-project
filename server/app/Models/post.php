@@ -41,6 +41,27 @@ class Post extends Model
         'views_count' => 'integer',
     ];
 
+    /**
+     * Get the featured image URL.
+     *
+     * @param  string  $value
+     * @return string|null
+     */
+    public function getFeaturedImageAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+
+        // If it's already a full URL, return as is
+        if (str_starts_with($value, 'http')) {
+            return $value;
+        }
+
+        // Convert relative path to full URL
+        return url($value);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
