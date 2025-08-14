@@ -26,6 +26,15 @@ class PostController extends Controller
 
             // Eager load minimal relations needed for mapping
             $query = Post::with(['user', 'comments.user', 'likes', 'category', 'tags'])->latest();
+            
+            // For public access (home page), only show published posts
+            if (!Auth::check()) {
+                $query->where('status', 'published')
+                      ->where('is_published', true)
+                      ->whereNotNull('published_at')
+                      ->where('published_at', '<=', now());
+            }
+            
             if ($filterUserId) {
                 $query->where('user_id', $filterUserId);
             }
@@ -99,6 +108,62 @@ class PostController extends Controller
         ];
     }
 
+    /**
+     * Get all posts for dashboard (authenticated users only)
+     */
+    public function dashboard()
+    {
+        try {
+            $userId = Auth::id();
+            $filterUserId = request()->query('user_id');
+            $search = request()->query('search');
+            $categoryId = request()->query('category_id');
+            $statusFilter = request()->query('status');
+            $page = (int) request()->query('page', 1);
+            $limit = (int) request()->query('limit', 10);
+
+            // Eager load minimal relations needed for mapping
+            $query = Post::with(['user', 'comments.user', 'likes', 'category', 'tags'])->latest();
+            
+            if ($filterUserId) {
+                $query->where('user_id', $filterUserId);
+            }
+            if ($categoryId) {
+                $query->where('category_id', $categoryId);
+            }
+            if ($statusFilter) {
+                $query->where('status', $statusFilter);
+            }
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%$search%")
+                        ->orWhere('content', 'like', "%$search%")
+                        ->orWhereHas('user', function ($uq) use ($search) {
+                            $uq->where('name', 'like', "%$search%");
+                        });
+                });
+            }
+
+            $paginator = $query->paginate($limit, ['*'], 'page', $page);
+            $posts = $paginator->getCollection()->map(function ($post) use ($userId) {
+                return $this->mapPost($post, $userId);
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $posts,
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching posts: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function store(Request $request)
     {
         try {
@@ -120,7 +185,7 @@ class PostController extends Controller
                 'title' => 'required|string|max:255',
                 'content' => 'required|string',
                 'excerpt' => 'nullable|string',
-                'category_id' => 'nullable|integer',
+                'category_id' => 'nullable|integer|exists:categories,id',
                 'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
                 'status' => 'nullable|string|in:draft,published',
                 'meta_title' => 'nullable|string|max:255',
@@ -128,6 +193,11 @@ class PostController extends Controller
                 'is_published' => 'nullable|boolean',
                 'tags' => 'nullable|string' // JSON string of tag IDs
             ]);
+
+            // Convert empty string category_id to null
+            if (isset($validated['category_id']) && $validated['category_id'] === '') {
+                $validated['category_id'] = null;
+            }
 
             // Handle image upload
             $imagePath = null;

@@ -73,6 +73,9 @@ class DashboardController extends Controller
     {
         try {
             $userId = Auth::id();
+            $user = Auth::user();
+            
+            // Start with base query - show only posts belonging to the authenticated user
             $query = Post::where('user_id', $userId)->with(['category', 'tags', 'user']);
 
             // Apply filters

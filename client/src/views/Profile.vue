@@ -361,60 +361,55 @@ export default {
   },
   methods: {
     async fetchUserData() {
-      try {
-        // TODO: Implement API call to fetch user data
-        // const response = await blogAPI.getProfile()
-        // this.user = response.data.user
-        // this.stats = response.data.stats
-        
-        // Mock data for now
-        this.user = {
-          id: 1,
-          name: 'John Doe',
-          email: 'john@example.com',
-          bio: 'Full-stack developer with 5+ years of experience.',
-          website: 'https://johndoe.dev',
-          created_at: '2024-01-01T00:00:00Z'
+       try {
+        const response = await blogAPI.getUserData()
+        if (response.data?.success) {
+          const { user } = response.data.data
+          this.user = user
+          this.stats = {
+            totalPosts: user?.posts?.length || 0,
+            totalViews: (user?.posts || []).reduce((sum, p) => sum + (p.views_count || 0), 0),
+            totalComments: (user?.comments || []).length || 0
+          }
+          this.profileForm = {
+            firstName: user.first_name || '',
+            lastName: user.last_name || '',
+            email: user.email || '',
+            bio: user.bio || '',
+            website: user.website || ''
+          }
+          this.notificationForm = {
+            emailNotifications: !!user.email_notifications,
+            weeklyDigest: false,
+            marketingEmails: !!user.marketing_emails
+          }
         }
-        
-        this.stats = {
-          totalPosts: 2,
-          totalViews: 1250,
-          totalComments: 8
-        }
-        
-        // Populate form with user data
-        this.profileForm = {
-          firstName: 'John',
-          lastName: 'Doe',
-          email: this.user.email,
-          bio: this.user.bio || '',
-          website: this.user.website || ''
-        }
-        
       } catch (error) {
         console.error('Error fetching user data:', error)
       }
     },
     async updateProfile() {
-      // Reset errors
-      this.errors = {}
-      
-      // Validate form
-      if (!this.validateProfileForm()) {
-        return
-      }
-      
-      try {
+       // Reset errors
+       this.errors = {}
+       
+       // Validate form
+       if (!this.validateProfileForm()) {
+         return
+       }
+       
+       try {
         this.updating = true
-        
-        // TODO: Implement API call to update profile
-        // const response = await blogAPI.updateProfile(this.profileForm)
-        // this.user = response.data
-        
-        // Mock successful update
-        console.log('Profile updated:', this.profileForm)
-        
+        const payload = new FormData()
+        if (this.profileForm.firstName !== undefined) payload.append('first_name', this.profileForm.firstName)
+        if (this.profileForm.lastName !== undefined) payload.append('last_name', this.profileForm.lastName)
+        if (this.profileForm.email !== undefined) payload.append('email', this.profileForm.email)
+        if (this.profileForm.bio !== undefined) payload.append('bio', this.profileForm.bio)
+        if (this.profileForm.website !== undefined) payload.append('website', this.profileForm.website)
+        const response = await blogAPI.updateProfile(payload)
+        if (response.data?.success) {
+          this.user = response.data.data.user
+          localStorage.setItem('user', JSON.stringify(this.user))
+        }
       } catch (error) {
         console.error('Error updating profile:', error)
         
@@ -461,15 +456,17 @@ export default {
       }
     },
     async updateNotifications() {
-      try {
+       try {
         this.updatingNotifications = true
-        
-        // TODO: Implement API call to update notifications
-        // await blogAPI.updateNotifications(this.notificationForm)
-        
-        // Mock successful update
-        console.log('Notifications updated:', this.notificationForm)
-        
+        const payload = {
+          email_notifications: this.notificationForm.emailNotifications,
+          marketing_emails: this.notificationForm.marketingEmails
+        }
+        const response = await blogAPI.updateProfile(payload)
+        if (response.data?.success) {
+          this.user = response.data.data.user
+          localStorage.setItem('user', JSON.stringify(this.user))
+        }
       } catch (error) {
         console.error('Error updating notifications:', error)
       } finally {

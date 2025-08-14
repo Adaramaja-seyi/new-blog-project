@@ -218,7 +218,10 @@ export default {
         if (this.post.title) formData.append('title', this.post.title);
         if (this.post.content) formData.append('content', this.post.content);
         if (this.post.excerpt) formData.append('excerpt', this.post.excerpt);
-        if (this.post.category_id) formData.append('category_id', this.post.category_id);
+        // Handle category_id properly - send null if empty string
+        if (this.post.category_id && this.post.category_id !== '') {
+          formData.append('category_id', this.post.category_id);
+        }
         if (this.post.status) formData.append('status', this.post.status);
         if (this.post.seo_title) formData.append('meta_title', this.post.seo_title);
         if (this.post.meta_description) formData.append('meta_description', this.post.meta_description);

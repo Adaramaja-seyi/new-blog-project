@@ -53,13 +53,30 @@ class Post extends Model
             return null;
         }
 
-        // If it's already a full URL, return as is
+        // If it's already a full URL, check if it's localhost and convert to relative path
         if (str_starts_with($value, 'http')) {
+            // If it's a localhost URL, extract the path part
+            if (str_contains($value, 'localhost')) {
+                $parsedUrl = parse_url($value);
+                if (isset($parsedUrl['path'])) {
+                    return $parsedUrl['path'];
+                }
+            }
             return $value;
         }
 
+        // If it's a relative path starting with /storage, return as is
+        if (str_starts_with($value, '/storage/')) {
+            return $value;
+        }
+
+        // If it's just a filename or relative path, assume it's in storage
+        if (!str_starts_with($value, '/')) {
+            return '/storage/' . $value;
+        }
+
         // Convert relative path to full URL
-        return url($value);
+        return asset($value);
     }
 
     public function user()

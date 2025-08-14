@@ -102,6 +102,15 @@ export default {
   methods: {
     async initializePage() {
       try {
+        // Check if user is authenticated
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          console.error('No auth token found');
+          this.$router.push('/login');
+          return;
+        }
+        
+        console.log('User authenticated, initializing dashboard...'); // Debug log
         await this.loadPosts();
         await this.loadCategories();
       } catch (error) {
@@ -116,8 +125,22 @@ export default {
         if (this.categoryFilter) filters.category_id = this.categoryFilter;
         if (this.searchQuery) filters.search = this.searchQuery;
 
+        console.log('Loading posts with filters:', filters); // Debug log
+        
         const response = await blogAPI.getDashboardPosts(filters);
-        this.posts = response.data || [];
+        console.log('API response:', response); // Debug log
+        
+        // Handle different response structures
+        if (response.data && response.data.success) {
+          this.posts = response.data.data || [];
+        } else if (response.data && Array.isArray(response.data)) {
+          this.posts = response.data;
+        } else {
+          this.posts = [];
+        }
+        
+        console.log('Processed posts:', this.posts); // Debug log
+        console.log('Posts count:', this.posts.length); // Debug log
       } catch (error) {
         console.error("Error loading posts:", error);
         this.posts = [];

@@ -2,9 +2,10 @@
   <div class="post-card">
     <div class="post-image">
       <img 
-        :src="post.featured_image || '/placeholder-image.jpg'" 
+        :src="getImageUrl(post.featured_image)" 
         :alt="post.title"
         class="img-fluid"
+        @error="handleImageError"
       />
       <div class="category-tag">{{ post.category?.name || post.category || 'General' }}</div>
     </div>
@@ -80,6 +81,15 @@ export default {
         month: 'short',
         day: 'numeric'
       });
+    },
+    getImageUrl(imagePath) {
+      if (!imagePath) {
+        return '/placeholder-image.jpg';
+      }
+      return imagePath;
+    },
+    handleImageError(event) {
+      event.target.src = '/placeholder-image.jpg';
     }
   }
 }

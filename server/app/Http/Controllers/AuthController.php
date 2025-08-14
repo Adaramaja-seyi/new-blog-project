@@ -190,21 +190,62 @@ class AuthController extends Controller
             // Validate the request
             $request->validate([
                 'name' => 'nullable|string|max:255',
+                'first_name' => 'nullable|string|max:255',
+                'last_name' => 'nullable|string|max:255',
                 'email' => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
+                'username' => 'nullable|string|max:255|unique:users,username,' . $user->id,
+                'phone' => 'nullable|string|max:255',
+                'website' => 'nullable|url|max:255',
+                'location' => 'nullable|string|max:255',
                 'bio' => 'nullable|string|max:1000',
                 'avatar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
                 'gender' => 'nullable|string|in:male,female,other',
+                'email_notifications' => 'nullable|boolean',
+                'marketing_emails' => 'nullable|boolean',
             ]);
 
             // Update only fields that are present in the request (including empty strings)
             if ($request->has('name')) {
                 $user->name = $request->input('name');
             }
+            if ($request->has('first_name')) {
+                $user->first_name = $request->input('first_name');
+            }
+            if ($request->has('last_name')) {
+                $user->last_name = $request->input('last_name');
+            }
+            if (! $request->has('name') && ($request->has('first_name') || $request->has('last_name'))) {
+                $composedName = trim(($request->input('first_name', $user->first_name ?? '')) . ' ' . ($request->input('last_name', $user->last_name ?? '')));
+                if ($composedName !== '') {
+                    $user->name = $composedName;
+                }
+            }
+            if ($request->has('email')) {
+                $user->email = $request->input('email');
+            }
+            if ($request->has('username')) {
+                $user->username = $request->input('username');
+            }
+            if ($request->has('phone')) {
+                $user->phone = $request->input('phone');
+            }
+            if ($request->has('website')) {
+                $user->website = $request->input('website');
+            }
+            if ($request->has('location')) {
+                $user->location = $request->input('location');
+            }
             if ($request->has('bio')) {
                 $user->bio = $request->input('bio');
             }
             if ($request->has('gender')) {
                 $user->gender = $request->input('gender');
+            }
+            if ($request->has('email_notifications')) {
+                $user->email_notifications = (bool) $request->boolean('email_notifications');
+            }
+            if ($request->has('marketing_emails')) {
+                $user->marketing_emails = (bool) $request->boolean('marketing_emails');
             }
 
             // Handle file upload
