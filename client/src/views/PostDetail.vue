@@ -33,6 +33,16 @@
             }}</span>
           </div>
 
+          <!-- Featured Image -->
+          <div v-if="post.featured_image" class="featured-image mb-4">
+            <img
+              :src="post.featured_image"
+              :alt="post.title"
+              class="img-fluid rounded shadow-sm"
+              style="width: 100%; height: 400px; object-fit: cover"
+            />
+          </div>
+
           <!-- Post Actions -->
           <div class="post-actions mb-4">
             <div class="d-flex align-items-center gap-3">
@@ -66,6 +76,16 @@
             </div>
           </div>
         </header>
+
+        <!-- Featured Image -->
+        <div v-if="post.featured_image" class="featured-image mb-4">
+          <img
+            :src="post.featured_image"
+            :alt="post.title"
+            class="img-fluid rounded"
+            style="width: 100%; max-height: 400px; object-fit: cover"
+          />
+        </div>
 
         <!-- Post Content -->
         <article class="post-content mb-5">

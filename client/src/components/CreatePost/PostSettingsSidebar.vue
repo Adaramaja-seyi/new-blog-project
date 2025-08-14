@@ -72,7 +72,8 @@
           <div v-if="post.featured_image" class="image-preview">
             <img :src="post.featured_image" alt="Featured" class="img-fluid rounded" />
             <button
-              @click="$emit('remove-featured-image')"
+              @click="removeImage"
+              type="button"
               class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
             >
               <i class="bi bi-x"></i>
@@ -81,15 +82,15 @@
           <div v-else class="upload-placeholder">
             <i class="bi bi-image fs-1 text-muted"></i>
             <p class="text-muted mb-2">No image selected</p>
-            <button @click="$emit('select-image')" class="btn btn-outline-primary btn-sm">
+            <button @click="selectImage" type="button" class="btn btn-outline-primary btn-sm">
               Choose Image
             </button>
           </div>
           <input
-            type="file"
             ref="imageInput"
+            type="file"
             accept="image/*"
-            @change="$emit('handle-image-upload', $event)"
+            @change="handleImageUpload"
             style="display: none"
           />
         </div>
@@ -161,6 +162,16 @@ export default {
     onTagInput(event) {
       this.localTagInput = event.target.value;
       this.$emit("search-tags", this.localTagInput);
+    },
+    selectImage() {
+      this.$refs.imageInput.click();
+    },
+    handleImageUpload(event) {
+      this.$emit('handle-image-upload', event);
+    },
+    removeImage() {
+      this.$refs.imageInput.value = "";
+      this.$emit('remove-featured-image');
     },
   },
 };
