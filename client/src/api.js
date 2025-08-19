@@ -12,14 +12,14 @@ const api = axios.create({
     Accept: "application/json",
   },
 });
-
+// Request interceptor - runs before every request is sent
 api.interceptors.request.use(
   (config) => {
     const auth = useAuth();
     if (auth?.token) {
       config.headers.Authorization = `Bearer ${auth.token}`;
     }
-
+    //  If sending FormData (e.g., file uploads), use multipart/form-data
     if (config.data instanceof FormData) {
       config.headers["Content-Type"] = "multipart/form-data";
     } else {
