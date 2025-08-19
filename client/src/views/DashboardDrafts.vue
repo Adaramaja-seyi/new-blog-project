@@ -178,8 +178,18 @@ export default {
           this.toast("Post not found");
           return;
         }
-
-        await blogAPI.updatePost(postId, { ...post, status: "published" });
+        console.log(post,99)
+        const formData = new FormData();
+        formData.append("title", post.title || "");
+        formData.append("content", post.content || "");
+        formData.append("excerpt", post.excerpt || "");
+        formData.append("category_id", post.category.id || "");
+        formData.append("tag_id", post.tag_id || "");
+        formData.append("status", "published");
+        formData.append("is_published", "yes");
+        
+        formData.append("_method", "PUT");
+        await blogAPI.updatePost(post.slug, formData);
         this.loadDrafts();
         this.toast.success("Post published successfully!");
       } catch (error) {

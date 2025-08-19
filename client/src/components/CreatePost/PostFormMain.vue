@@ -101,7 +101,7 @@
                 <div class="featured-image-upload">
                   <div v-if="post.featured_image" class="image-preview">
                     <img
-                      :src="getImageUrl(post.featured_image)"
+                      :src="post.featured_image"
                       alt="Featured"
                       class="img-fluid rounded"
                     />
@@ -170,8 +170,15 @@ export default {
   },
 
   methods: {
-    getImageUrl(path) {
-      return `http://localhost:8000${path}`;
+    getImageUrl(image) {
+      if (!image) return "";
+      if (typeof image === "string") {
+        return `http://localhost:8000${image}`;
+      }
+      if (image instanceof File || image instanceof Blob) {
+        return URL.createObjectURL(image);
+      }
+      return "";
     },
     onTagInput(event) {
       this.localTagInput = event.target.value;
