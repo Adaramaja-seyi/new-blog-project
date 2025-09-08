@@ -36,7 +36,7 @@ const routes = [
     meta: { title: "Login" },
   },
   {
-    path: "/register",
+    path: "/register", 
     name: "Register",
     component: Register,
     meta: { title: "Register" },

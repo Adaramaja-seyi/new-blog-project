@@ -40,12 +40,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/upload-image', [PostController::class, 'uploadImage']);
     Route::get('/posts/status/{status}', [PostController::class, 'getPostsByStatus']);
 
-    // Tags
-    Route::post('/tags', [TagController::class, 'createTag']);
-    Route::put('/tags/{tag}', [TagController::class, 'updateTag']);
-    Route::delete('/tags/{tag}', [TagController::class, 'deleteTag']);
-    Route::get('/tags/search', [TagController::class, 'search']);
-
     // Dashboard routes
     Route::prefix('dashboard')->group(function () {
         Route::get('/stats', [DashboardController::class, 'getStats']);
@@ -56,15 +50,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/posts/bulk-delete', [DashboardController::class, 'bulkDeletePosts']);
     });
 
-    // Comments
-    Route::post('/posts/{post:slug}/comments', [CommentController::class, 'createComment']);
-    Route::put('/comments/{comment}', [CommentController::class, 'updateComment']);
-    Route::delete('/comments/{comment}', [CommentController::class, 'deleteComment']);
-    Route::post('/comments/{comment}/approve', [CommentController::class, 'approve']);
-    Route::post('/comments/{comment}/reject', [CommentController::class, 'reject']);
-    Route::post('/comments/{comment}/spam', [CommentController::class, 'markAsSpam']);
-    Route::patch('/comments/{comment}/status', [CommentController::class, 'updateStatus']);
-    Route::get('/comments/recent', [CommentController::class, 'getRecentComments']);
+    // // Comments
+     Route::post('/posts/{post:slug}/comments', [CommentController::class, 'createComment']);
+     Route::delete('/comments/{comment}', [CommentController::class, 'deleteComment']);
+   
 
     // Likes
     Route::post('/posts/{post:id}/like', [LikeController::class, 'likePost']);

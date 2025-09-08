@@ -66,6 +66,10 @@ export default {
       searchQuery: this.search || "",
     };
   },
+  created() {
+    // Initialize with props
+    this.categoryFilter = this.category || "";
+  },
   watch: {
     status(val) {
       this.statusFilter = val;

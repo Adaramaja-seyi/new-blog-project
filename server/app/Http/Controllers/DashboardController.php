@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\Storage;
 
 class DashboardController extends Controller
 {
-    /**
-     * Get dashboard statistics
-     */
+    
+    //  Get dashboard statistics
+     
     public function getStats()
     {
         try {
@@ -23,17 +23,11 @@ class DashboardController extends Controller
 
             $stats = [
                 'total_posts' => Post::where('user_id', $userId)->count(),
-                'published_posts' => Post::where('user_id', $userId)->where('status', 'published')->count(),
-                'draft_posts' => Post::where('user_id', $userId)->where('status', 'draft')->count(),
+            
                 'total_comments' => Comment::whereHas('post', function ($query) use ($userId) {
                     $query->where('user_id', $userId);
                 })->count(),
-                'pending_comments' => Comment::whereHas('post', function ($query) use ($userId) {
-                    $query->where('user_id', $userId);
-                })->where('status', 'pending')->count(),
-                'approved_comments' => Comment::whereHas('post', function ($query) use ($userId) {
-                    $query->where('user_id', $userId);
-                })->where('status', 'approved')->count(),
+               
                 'total_likes' => Like::whereHas('post', function ($query) use ($userId) {
                     $query->where('user_id', $userId);
                 })->count(),
@@ -47,16 +41,13 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
-            $recentComments = Comment::whereHas('post', function ($query) use ($userId) {
-                $query->where('user_id', $userId);
-            })->with(['post', 'user'])->latest()->limit(5)->get();
-
+           
             return response()->json([
                 'success' => true,
                 'data' => [
                     'stats' => $stats,
                     'recent_posts' => $recentPosts,
-                    'recent_comments' => $recentComments
+                  
                 ]
             ]);
         } catch (\Exception $e) {
@@ -68,20 +59,19 @@ class DashboardController extends Controller
         }
     }
 
-    /**
-     * Get posts for dashboard with filtering
-     */
+    
+    //   Get posts for dashboard with filtering
+    
     public function getPosts(Request $request)
     {
         try {
             $userId = Auth::id();
-            $user = Auth::user();
 
-            // Start with base query - show only posts belonging to the authenticated user
-            $query = Post::where('user_id', $userId)->with(['category', 'tags', 'user', 'likes', 'comments']);
+            $query = Post::with(['category', 'tags', 'user', 'likes', 'comments'])
+            ->where('user_id', $userId);
 
             // Apply filters
-            if ($request->has('status') && $request->status !== '') {
+            if ($request->has('status') && !is_null($request->status)) {
                 $query->where('status', $request->status);
             }
 
@@ -98,14 +88,7 @@ class DashboardController extends Controller
                 });
             }
 
-            if ($request->has('date_from') && $request->date_from !== '') {
-                $query->whereDate('created_at', '>=', $request->date_from);
-            }
-
-            if ($request->has('date_to') && $request->date_to !== '') {
-                $query->whereDate('created_at', '<=', $request->date_to);
-            }
-
+           
             $posts = $query->latest()->get();
 
             // Map posts to include counts and other necessary data
@@ -148,61 +131,10 @@ class DashboardController extends Controller
         }
     }
 
-    /**
-     * Get comments for dashboard with filtering
-     */
-    public function getComments(Request $request)
-    {
-        try {
-            $userId = Auth::id();
-            $query = Comment::whereHas('post', function ($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })->with(['post', 'user']);
-
-            // Apply filters
-            if ($request->has('status') && $request->status !== '') {
-                $query->where('status', $request->status);
-            }
-
-            if ($request->has('post_id') && $request->post_id !== '') {
-                $query->where('post_id', $request->post_id);
-            }
-
-            if ($request->has('search') && $request->search !== '') {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('content', 'LIKE', "%{$search}%")
-                        ->orWhere('author_name', 'LIKE', "%{$search}%")
-                        ->orWhere('author_email', 'LIKE', "%{$search}%");
-                });
-            }
-
-            if ($request->has('date_from') && $request->date_from !== '') {
-                $query->whereDate('created_at', '>=', $request->date_from);
-            }
-
-            if ($request->has('date_to') && $request->date_to !== '') {
-                $query->whereDate('created_at', '<=', $request->date_to);
-            }
-
-            $comments = $query->latest()->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $comments
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch comments',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Bulk update posts
-     */
+    
+   
+    // Bulk update of multiple  posts at once
+     
     public function bulkUpdatePosts(Request $request)
     {
         // dd($request->all());
@@ -270,9 +202,9 @@ class DashboardController extends Controller
         }
     }
 
-    /**
-     * Get analytics data for the dashboard
-     */
+  
+    //   Get analytics data for the dashboard
+     
     public function getAnalytics(Request $request)
     {
         try {
@@ -280,25 +212,25 @@ class DashboardController extends Controller
             $period = $request->query('period', 30);
             $days = (int) $period;
 
-            // Get current period stats
+         
+            
             $currentStats = $this->getPeriodStats($userId, $days);
 
-            // Get previous period stats for comparison
+            
             $previousStats = $this->getPeriodStats($userId, $days, $days);
 
-            // Calculate percentage changes
+       
+
             $changes = $this->calculateChanges($currentStats, $previousStats);
 
-            // Get engagement data over time
+           
             $engagementData = $this->getEngagementData($userId, $days);
 
-            // Get top performing posts
             $topPosts = $this->getTopPosts($userId, 5);
 
-            // Get category performance
+       
             $categoryData = $this->getCategoryPerformance($userId);
 
-            // Calculate additional metrics
             $avgViewsPerPost = $currentStats['total_views'] > 0 ? round($currentStats['total_views'] / $currentStats['total_posts'], 0) : 0;
             $engagementRate = $currentStats['total_views'] > 0 ? round((($currentStats['total_likes'] + $currentStats['total_comments']) / $currentStats['total_views']) * 100, 1) : 0;
             $postsThisMonth = Post::where('user_id', $userId)
@@ -323,7 +255,7 @@ class DashboardController extends Controller
                     'avgViewsPerPost' => $avgViewsPerPost,
                     'engagementRate' => $engagementRate,
                     'postsThisMonth' => $postsThisMonth,
-                    'avgTimeOnPage' => 145, // Mock data for now
+                    'avgTimeOnPage' => 145, 
                 ]
             ]);
         } catch (\Exception $e) {
@@ -335,9 +267,9 @@ class DashboardController extends Controller
         }
     }
 
-    /**
-     * Get stats for a specific period
-     */
+    
+    //   Get stats for a specific period
+     
     private function getPeriodStats($userId, $days, $offset = 0)
     {
         $startDate = now()->subDays($days + $offset);
@@ -365,9 +297,8 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * Calculate percentage changes between periods
-     */
+    // Calculate percentage changes between periods
+     
     private function calculateChanges($current, $previous)
     {
         $calculateChange = function ($current, $previous) {
@@ -383,9 +314,8 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * Get engagement data over time
-     */
+    // Get engagement data over time
+     
     private function getEngagementData($userId, $days)
     {
         $data = [];

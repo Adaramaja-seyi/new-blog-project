@@ -55,7 +55,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Registration failed: ' . $e->getMessage()
-            ], 500);
+            ], 500); 
         }
     }
 
@@ -77,7 +77,7 @@ class AuthController extends Controller
                     'errors' => [
                         'email' => ['The credentials are incorrect.']
                     ]
-                ], 401);
+                ], 401); 
             }
 
             return response()->json([
@@ -114,7 +114,7 @@ class AuthController extends Controller
         }
     }
 
-
+    // Fetch user details along with posts, comments, and likes, returning JSON response.
     public function getUserData(Request $request)
     {
         try {
@@ -197,7 +197,7 @@ class AuthController extends Controller
                         mkdir($uploadPath, 0755, true);
                     }
 
-                    // Try to store in public storage
+                    //  store in public storage
                     $profileImagePath = $file->storeAs('profile-images', $fileName, 'public');
 
                     // Verify the file was actually saved
@@ -250,7 +250,7 @@ class AuthController extends Controller
                     'errors' => [
                         'current_password' => ['Current password is incorrect']
                     ]
-                ], 422);
+                ], 422); 
             }
 
             // Update password
@@ -274,23 +274,18 @@ class AuthController extends Controller
         try {
             $user = $request->user();
 
-            // Delete user's posts
+            
             $user->posts()->delete();
 
-            // Delete user's comments
+            
             $user->comments()->delete();
 
-            // Delete user's likes
+        
             $user->likes()->delete();
 
-            if ($user->avatar) {
-                $avatarPath = str_replace('/storage/', '', $user->avatar);
-                if (Storage::disk('public')->exists($avatarPath)) {
-                    Storage::disk('public')->delete($avatarPath);
-                }
-            }
+            
 
-            // Delete user's profile image if exists
+            
             if ($user->profile_image) {
                 $profileImagePath = str_replace('/storage/', '', $user->profile_image);
                 if (Storage::disk('public')->exists($profileImagePath)) {

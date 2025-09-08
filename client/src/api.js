@@ -19,7 +19,7 @@ api.interceptors.request.use(
     if (auth?.token) {
       config.headers.Authorization = `Bearer ${auth.token}`;
     }
-    //  If sending FormData (e.g., file uploads), use multipart/form-data
+    
     if (config.data instanceof FormData) {
       config.headers["Content-Type"] = "multipart/form-data";
     } else {
@@ -42,7 +42,7 @@ api.interceptors.response.use(
       localStorage.removeItem("token");
       localStorage.removeItem("user");
 
-      // Only redirect if current route requires auth
+      
       const currentRoute = router.currentRoute.value;
       if (currentRoute.meta.requiresAuth) {
         router.push({ path: "/login", query: { redirect: currentRoute.fullPath } });

@@ -155,7 +155,7 @@ export default {
           if (result.errors) {
             this.errors = result.errors;
           }
-        }
+        } 
       } catch (error) {
         console.error("Login error:", error);
         this.error = "An unexpected error occurred. Please try again.";

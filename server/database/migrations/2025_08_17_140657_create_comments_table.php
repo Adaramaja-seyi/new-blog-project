@@ -24,7 +24,6 @@ return new class extends Migration
                 ->onDelete('cascade');
 
             $table->text('content');
-            $table->enum('status', ['pending', 'approved', 'spam'])->default('pending');
             $table->timestamps();
         });
     }

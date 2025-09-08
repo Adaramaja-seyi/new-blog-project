@@ -31,10 +31,6 @@ class Comment extends Model
         return $this->belongsTo(Post::class);
     }
 
-    public function replies()
-    {
-        return $this->hasMany(Comment::class, 'parent_id');
-    }
 
     public function parent()
     {
@@ -46,21 +42,6 @@ class Comment extends Model
         return $this->hasMany(Like::class);
     }
 
-    // Scopes
-    public function scopeApproved($query)
-    {
-        return $query->where('status', 'approved');
-    }
-
-    public function scopePending($query)
-    {
-        return $query->where('status', 'pending');
-    }
-
-    public function scopeSpam($query)
-    {
-        return $query->where('status', 'spam');
-    }
 
     public function scopeParentComments($query)
     {

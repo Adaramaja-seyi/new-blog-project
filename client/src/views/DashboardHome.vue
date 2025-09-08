@@ -71,12 +71,10 @@ export default {
       }
     },
     async approveComment(commentId) {
-      // Optionally, you can emit an event or handle comment approval globally
-      // Or leave this empty if handled in RecentCommentsTable
+      
     },
     async deleteComment(commentId) {
-      // Optionally, you can emit an event or handle comment deletion globally
-      // Or leave this empty if handled in RecentCommentsTable
+      
     },
   },
 };

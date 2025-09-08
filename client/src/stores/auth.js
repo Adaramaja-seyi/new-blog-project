@@ -3,18 +3,16 @@ import { defineStore } from "pinia";
 import { blogAPI } from "../api.js";
 
 export const useAuth = defineStore("auth", {
-  // === State ===
+  
   state: () => ({
     user: JSON.parse(localStorage.getItem("user")) || null,
     token: localStorage.getItem("token") || null,
   }),
 
-  // === Getters ===
   getters: {
     isLoggedIn: (state) => !!state.user || !!state.token,
   },
 
-  // === Actions ===
   actions: {
     async login(credentials) {
       try {

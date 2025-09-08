@@ -79,7 +79,7 @@ const deleteCategory = async (id) => {
   }
 };
 
-// Initialize categories on first load
+
 fetchCategories();
 
 export const useCategoriesStore = () => {

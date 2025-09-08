@@ -31,15 +31,15 @@ export default {
 
 <template>
   <div id="app">
-    <!-- Hide navbar and footer on login/register pages -->
+    
     <template v-if="isAuthRoute">
       <router-view />
     </template>
-    <!-- Hide navbar and footer on dashboard routes, only show if authenticated -->
+  
     <template v-else-if="isDashboardRoute">
-      <!-- <template v-if="isAuthenticated"> -->
+    
       <router-view />
-      <!-- </template> -->
+
     </template>
     <!-- Show navbar and footer everywhere else, regardless of authentication -->
     <template v-else>

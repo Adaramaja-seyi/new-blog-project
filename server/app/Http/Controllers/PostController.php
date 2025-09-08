@@ -21,7 +21,7 @@ class PostController extends Controller
             $page = (int) request()->query('page', 1);
             $limit = (int) request()->query('limit', 10);
 
-            $query = Post::with(['user', 'comments.user', 'likes', 'category', 'tag'])->latest();
+            $query = Post::with(relations: ['user', 'comments.user', 'likes', 'category', 'tag'])->latest();
 
             if (!Auth::check()) {
                 $query->where('status', 'published')
@@ -328,28 +328,4 @@ class PostController extends Controller
         }
     }
 
-    public function getRelatedPosts(Post $post)
-    {
-        try {
-            $posts = Post::where('category_id', $post->category_id)
-                ->where('id', '!=', $post->id)
-                ->with(['user', 'category', 'tag'])
-                ->latest()
-                ->take(5)
-                ->get()
-                ->map(function ($relatedPost) {
-                    return $this->mapPost($relatedPost);
-                });
-
-            return response()->json([
-                'success' => true,
-                'data' => $posts
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching related posts: ' . $e->getMessage()
-            ], 500);
-        }
-    }
 }

@@ -84,7 +84,7 @@ const deleteTag = async (id) => {
   }
 };
 
-// Initialize tags on first load
+
 fetchTags();
 
 export const useTagsStore = () => {

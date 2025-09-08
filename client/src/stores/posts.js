@@ -69,7 +69,7 @@ const createPost = async (postData) => {
 
         if (response.data.success) {
             const newPost = response.data.data
-            // Instead of just unshifting, fetch the latest posts from the API
+            //  fetch the latest posts from the API
             await fetchPosts()
             return { success: true, data: newPost }
         } else {

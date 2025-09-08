@@ -67,10 +67,15 @@ export default {
       if (this.statusFilter) {
         filtered = filtered.filter((post) => post.status === this.statusFilter);
       }
-      if (this.categoryFilter) {
-        filtered = filtered.filter(
-          (post) => post.category_id == this.categoryFilter
-        );
+      if (this.categoryFilter !== "") {
+        const categoryId = parseInt(this.categoryFilter, 10);
+        filtered = filtered.filter((post) => {
+          const postCategoryId = post.category
+            ? parseInt(post.category.id, 10)
+            : null;
+          console.log("Comparing:", postCategoryId, "with", categoryId); 
+          return postCategoryId === categoryId;
+        });
       }
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
@@ -93,8 +98,7 @@ export default {
     },
     allSelected() {
       return (
-        this.paginatedPosts.length > 0 &&
-        this.paginatedPosts.every((post) =>
+        this.paginatedPosts.length > 0 && this.paginatedPosts.every((post) =>
           this.selectedPosts.includes(post.id)
         )
       );
@@ -125,7 +129,10 @@ export default {
       try {
         const filters = {};
         if (this.statusFilter) filters.status = this.statusFilter;
-        if (this.categoryFilter) filters.category_id = this.categoryFilter;
+        if (this.categoryFilter !== "") {
+          filters.category_id = parseInt(this.categoryFilter, 10);
+          console.log("Filtering by category:", filters.category_id); // Debug log
+        }
         if (this.searchQuery) filters.search = this.searchQuery;
 
         const response = await blogAPI.getDashboardPosts(filters);
@@ -262,6 +269,7 @@ export default {
       this.loadPosts();
     },
     onCategoryChange(categoryId) {
+      console.log("Category changed to:", categoryId); // Debug log
       this.categoryFilter = categoryId;
       this.currentPage = 1;
       this.loadPosts();

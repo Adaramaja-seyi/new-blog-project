@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class CommentController extends Controller
 {
+    // Fetch top-level comments for a post by slug
     public function index($postSlug)
     {
         $post = Post::where('slug', $postSlug)->firstOrFail();
@@ -46,10 +47,10 @@ class CommentController extends Controller
             'user_id' => Auth::id(),
             'post_id' => $post->id,
             'parent_id' => $request->input('parent_id'),
-            'status' => 'pending'
+            // 'status' => 'pending'
         ]);
 
-        $comment->load('user');
+        $comment->load(relations: 'user');
 
         return response()->json([
             'comment' => $comment,
@@ -57,29 +58,9 @@ class CommentController extends Controller
         ], 201);
     }
 
-    public function show($id)
-    {
-        $comment = Comment::with(['user', 'replies.user'])->findOrFail($id);
+    
 
-        return response()->json([
-            'comment' => $comment
-        ]);
-    }
-
-    public function updateComment(Request $request, $id)
-    {
-        $request->validate([
-            'content' => 'required|string|max:1000'
-        ]);
-
-        $comment = Comment::where('user_id', Auth::id())->findOrFail($id);
-        $comment->update(['content' => $request->input('content')]);
-
-        return response()->json([
-            'comment' => $comment,
-            'message' => 'Comment updated successfully'
-        ], 200); // Use 200 for successful update
-    }
+    // 
 
     public function deleteComment($id)
     {
@@ -104,128 +85,17 @@ class CommentController extends Controller
         ]);
     }
 
-    public function approve($id)
-    {
-        try {
-            $comment = Comment::findOrFail($id);
+   
 
-            // Check if user owns the post this comment belongs to
-            if ($comment->post->user_id !== Auth::id()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-
-            $comment->update(['status' => 'approved']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Comment approved successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to approve comment',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Reject a comment
-     */
-    public function reject($id)
-    {
-        try {
-            $comment = Comment::findOrFail($id);
-
-            // Check if user owns the post this comment belongs to
-            if ($comment->post->user_id !== Auth::id()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-
-            $comment->update(['status' => 'pending']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Comment rejected successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to reject comment',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Mark comment as spam
-     */
-    public function markAsSpam($id)
-    {
-        try {
-            $comment = Comment::findOrFail($id);
-
-            // Check if user owns the post this comment belongs to
-            if ($comment->post->user_id !== Auth::id()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-
-            $comment->update(['status' => 'spam']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Comment marked as spam successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to mark comment as spam',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Update comment status
-     */
-    public function updateStatus(Request $request, $id)
-    {
-        try {
-            $request->validate([
-                'status' => 'required|in:approved,pending,spam'
-            ]);
-
-            $comment = Comment::findOrFail($id);
-
-            // Check if user owns the post this comment belongs to
-            if ($comment->post->user_id !== Auth::id()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-
-            $comment->update(['status' => $request->status]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Comment status updated successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update comment status',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Get comments for a specific post by slug
-     */
+    
+    //   Get comments for a specific post by slug
+     
     public function getPostComments($slug)
     {
         try {
             $post = Post::where('slug', $slug)->firstOrFail();
             // dd($post->id);
-            $comments = Comment::with(['user'])
+            $comments = Comment::with('user')
                 ->where('post_id', $post->id)
                 // ->where('status', 'approved')
                 ->whereNull('parent_id')

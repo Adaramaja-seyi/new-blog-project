@@ -309,7 +309,6 @@ export default {
         }
       } catch (error) {
         console.error("Error loading analytics:", error);
-        // Load mock data for demonstration
         this.loadMockData();
       } finally {
         this.loading = false;
