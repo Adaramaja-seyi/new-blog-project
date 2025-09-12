@@ -18,7 +18,7 @@ class PostController extends Controller
             $filterUserId = request()->query('user_id');
             $search = request()->query('search');
             $categoryId = request()->query('category_id');
-            $page = (int) request()->query('page', 1);
+            $page  = (int) request()->query('page', 1);
             $limit = (int) request()->query('limit', 10);
 
             $query = Post::with(relations: ['user', 'comments.user', 'likes', 'category', 'tag'])->latest();

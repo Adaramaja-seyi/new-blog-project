@@ -104,7 +104,7 @@ export default {
           icon: "bi bi-graph-up",
         },
         {
-          path: `/dashboard/settings/${this.currentUser}`,
+          path: `/dashboard/settings/${this.user_id}`,
           label: "Settings",
           icon: "bi bi-gear",
         },
@@ -115,7 +115,7 @@ export default {
       return useAuth();
     },
 
-    currentUser() {
+    user_id() {
       return this.auth?.user?.id || null;
     },
   },

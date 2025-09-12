@@ -112,9 +112,6 @@ export const blogAPI = {
   createComment: (postIdOrSlug, data) => api.post(`/posts/${postIdOrSlug}/comments`, data),
   updateComment: (id, data) => api.put(`/comments/${id}`, data),
   deleteComment: (id) => api.delete(`/comments/${id}`),
-  approveComment: (id) => api.post(`/comments/${id}/approve`),
-  rejectComment: (id) => api.post(`/comments/${id}/reject`),
-  markCommentAsSpam: (id) => api.post(`/comments/${id}/spam`),
   getRecentComments: () => api.get('/comments/recent'),
 
   // Likes endpoints

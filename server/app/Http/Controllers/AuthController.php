@@ -2,15 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
@@ -44,13 +40,6 @@ class AuthController extends Controller
                     'token' => $token
                 ]
             ], 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // Handle validation errors specifically
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -77,7 +66,7 @@ class AuthController extends Controller
                     'errors' => [
                         'email' => ['The credentials are incorrect.']
                     ]
-                ], 401); 
+                ], 422); 
             }
 
             return response()->json([
@@ -114,16 +103,17 @@ class AuthController extends Controller
         }
     }
 
-    // Fetch user details along with posts, comments, and likes, returning JSON response.
     public function getUserData(Request $request)
     {
+        // dd($request->all());
         try {
-            $user = $request->input('user_id');
+            $user_id = $request->input('user_id');
+           
             $user = User::with([
                 'posts',
                 'comments',
                 'likes'
-            ])->findOrFail($request->input('user_id'))->first();
+            ])->findOrFail($user_id)->first();
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -169,7 +159,7 @@ class AuthController extends Controller
             if ($request->has('location')) {
                 $user->location = $request->input('location');
             }
-            if ($request->has('bio')) {
+            if ($request->has('bio') && $request->bio > 0) {
                 $user->bio = $request->input('bio');
             }
             if ($request->has('gender')) {
@@ -243,7 +233,7 @@ class AuthController extends Controller
             ]);
 
             // Check if current password is correct
-            if (!Hash::check($request->input('current_password'), $user->password)) {
+            if (!Hash::check($request->current_password, $user->password)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Current password is incorrect',
@@ -254,7 +244,7 @@ class AuthController extends Controller
             }
 
             // Update password
-            $user->password = Hash::make($request->input('new_password'));
+            $user->password = Hash::make($request->new_password);
             $user->save();
 
             return response()->json([
@@ -273,18 +263,12 @@ class AuthController extends Controller
     {
         try {
             $user = $request->user();
-
             
             $user->posts()->delete();
 
-            
             $user->comments()->delete();
 
-        
             $user->likes()->delete();
-
-            
-
             
             if ($user->profile_image) {
                 $profileImagePath = str_replace('/storage/', '', $user->profile_image);
