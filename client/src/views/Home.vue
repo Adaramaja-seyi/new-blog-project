@@ -37,6 +37,10 @@
               <div class="stat-label">Categories</div>
             </div>
           </div>
+          <button class="cta-button" @click="$router.push('/register')">
+            <span>Create Your Blog</span>
+            <i class="bi bi-pencil"></i>
+          </button>
           <button class="cta-button" @click="scrollToPosts('post-section')">
             <span>Start Exploring</span>
             <i class="bi bi-arrow-down"></i>

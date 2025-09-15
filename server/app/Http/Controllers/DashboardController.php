@@ -98,7 +98,7 @@ class DashboardController extends Controller
                     'title' => $post->title,
                     'slug' => $post->slug,
                     'excerpt' => $post->excerpt,
-                    'content' => $post->content,
+                     'content' => $post->content,
                     'featured_image' => $post->featured_image,
                     'status' => $post->status,
                     'views_count' => $post->views_count ?? 0,

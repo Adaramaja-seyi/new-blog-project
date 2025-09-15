@@ -130,7 +130,8 @@ class AuthController extends Controller
     }
 
     public function updateProfile(Request $request)
-    {
+    {       
+        // dd($request->all());
         try {
             $user = $request->user();
 
@@ -146,24 +147,24 @@ class AuthController extends Controller
             ]);
 
             if ($request->has('name')) {
-                $user->name = $request->input('name');
+                $user->name = $request->name;
             }
          
             if ($request->has('email')) {
-                $user->email = $request->input('email');
+                $user->email = $request->email;
             }
            
             if ($request->has('phone')) {
-                $user->phone = $request->input('phone');
+                $user->phone = $request->phone;
             }
             if ($request->has('location')) {
-                $user->location = $request->input('location');
+                $user->location = $request->location;
             }
             if ($request->has('bio') && $request->bio > 0) {
-                $user->bio = $request->input('bio');
+                $user->bio = $request->bio;
             }
             if ($request->has('gender')) {
-                $user->gender = $request->input('gender');
+                $user->gender = $request->gender;
             }
 
             // Handle profile image upload

@@ -121,23 +121,6 @@ class LikeController extends Controller
     /**
      * Get likes for a post
      */
-    public function getPostLikes($postId)
-    {
-        try {
-            $post = Post::findOrFail($postId);
-            $likes = $post->likes()->with('user')->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $likes,
-                'count' => $likes->count()
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching likes: ' . $e->getMessage()
-            ], 500);
-        }
-    }
+  
 
 }

@@ -10,21 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class CommentController extends Controller
 {
-    // Fetch top-level comments for a post by slug
-    public function index($postSlug)
-    {
-        $post = Post::where('slug', $postSlug)->firstOrFail();
-        $comments = Comment::with(['user'])
-            ->where('post_id', $post->id)
-            ->whereNull('parent_id')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return response()->json([
-            'comments' => $comments
-        ]);
-    }
-
+    
     public function createComment(Request $request, $postSlug)
     {
         $request->validate([
@@ -58,9 +44,6 @@ class CommentController extends Controller
         ], 201);
     }
 
-    
-
-    // 
 
     public function deleteComment($id)
     {
@@ -72,46 +55,4 @@ class CommentController extends Controller
         ], 200); // Use 200 for successful delete
     }
 
-    public function getRecentComments()
-    {
-        // Get the 10 most recent comments with user and post info
-        $comments = Comment::with(['user', 'post'])
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-
-        return response()->json([
-            'comments' => $comments
-        ]);
-    }
-
-   
-
-    
-    //   Get comments for a specific post by slug
-     
-    public function getPostComments($slug)
-    {
-        try {
-            $post = Post::where('slug', $slug)->firstOrFail();
-            // dd($post->id);
-            $comments = Comment::with('user')
-                ->where('post_id', $post->id)
-                // ->where('status', 'approved')
-                ->whereNull('parent_id')
-                ->orderBy('created_at', 'desc')
-                ->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $comments
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch comments',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 }

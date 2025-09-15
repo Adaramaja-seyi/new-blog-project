@@ -585,9 +585,7 @@ export default {
           localStorage.setItem("user", JSON.stringify(this.user));
 
           this.toast.success("Profile image updated successfully!");
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
+         
         }
       } catch (error) {
         console.error("Error uploading profile image:", error);
@@ -613,10 +611,9 @@ export default {
       try {
         this.updating = true;
         const payload = new FormData();
-        if (this.profileForm.firstName !== undefined)
-          payload.append("first_name", this.profileForm.firstName);
-        if (this.profileForm.lastName !== undefined)
-          payload.append("last_name", this.profileForm.lastName);
+        if (this.profileForm.name !== undefined)
+          payload.append("name", this.profileForm.name);
+        
         if (this.profileForm.email !== undefined)
           payload.append("email", this.profileForm.email);
         if (this.profileForm.bio !== undefined)
