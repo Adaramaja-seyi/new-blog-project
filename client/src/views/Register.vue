@@ -146,6 +146,8 @@
                 </router-link>
               </p>
             </div>
+            <!-- OTP Email Verification Component -->
+            <router-view />
           </div>
         </div>
       </div>
@@ -168,6 +170,7 @@ export default {
     return {
       form: {
         Fullname: "",
+        email: "",
         password: "",
         confirmPassword: "",
         agreeToTerms: false,
@@ -175,6 +178,10 @@ export default {
       errors: {},
       loading: false,
       error: "",
+      showOtpModal: false,
+      otp: "",
+      verifying: false,
+      otpError: "",
     };
   },
   methods: {
@@ -199,10 +206,13 @@ export default {
         });
 
         if (result.success) {
-          this.toast.success("Registration successful! Redirecting...");
-          // Redirect to dashboard
-           const redirectTo = this.$route.query.redirect || "/login";
-          this.$router.push(redirectTo);
+          this.toast.success(
+            "Registration successful! Please verify your email."
+          );
+          this.$router.push({
+            name: "VerifyEmail",
+            query: { email: this.form.email },
+          });
         } else {
           this.error = result.message;
           if (result.errors) {
@@ -223,6 +233,35 @@ export default {
         }
       } finally {
         this.loading = false;
+      }
+    },
+    async verifyOtp() {
+      this.otpError = "";
+      if (!this.otp || this.otp.length !== 6) {
+        this.otpError = "Please enter the 6-digit OTP.";
+        return;
+      }
+      this.verifying = true;
+      try {
+        const res = await fetch("/api/email/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: this.form.email, otp: this.otp }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          this.toast.success("Email verified! Redirecting to login...");
+          this.showOtpModal = false;
+          setTimeout(() => {
+            this.$router.push({ name: "Login" });
+          }, 1200);
+        } else {
+          this.otpError = data.message || "Invalid OTP.";
+        }
+      } catch (e) {
+        this.otpError = "Network error. Please try again.";
+      } finally {
+        this.verifying = false;
       }
     },
     validateForm() {
@@ -281,6 +320,27 @@ export default {
 </script>
 
 <style scoped>
+.otp-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.otp-modal {
+  background: #fff;
+  padding: 2rem 2rem 1.5rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.12);
+  max-width: 350px;
+  width: 100%;
+  text-align: center;
+}
 .card {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-lg);

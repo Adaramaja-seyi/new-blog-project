@@ -9,8 +9,18 @@ import Register from "../views/Register.vue";
 import DashboardWrapper from "../components/DashboardWrapper.vue";
 import DashboardHome from "../views/DashboardHome.vue";
 import Profile from "../views/Profile.vue";
+import ForgotPassword from "../views/ForgotPassword.vue";
+import ResetPassword from "../views/ResetPassword.vue";
+
+import OtpEmailVerification from "../components/OtpEmailVerification.vue";
 
 const routes = [
+  {
+    path: "/verify-email",
+    name: "VerifyEmail",
+    component: OtpEmailVerification,
+    props: route => ({ email: route.query.email })
+  },
   {
     path: "/",
     name: "Home",
@@ -36,10 +46,26 @@ const routes = [
     meta: { title: "Login" },
   },
   {
-    path: "/register", 
+    path: "/register",
     name: "Register",
     component: Register,
     meta: { title: "Register" },
+  },
+  {
+    path: "/forgot-password",
+    name: "ForgotPassword",
+    component: ForgotPassword,
+    meta: { title: "Forgot Password" },
+  },
+  {
+    path: "/reset-password",
+    name: "ResetPassword",
+    component: ResetPassword,
+    meta: { title: "Reset Password" },
+    props: route => ({
+      email: route.query.email,
+      token: route.query.token
+    })
   },
   {
     path: "/dashboard",

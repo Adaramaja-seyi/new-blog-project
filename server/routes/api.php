@@ -10,6 +10,9 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\LikeController;
+use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\EmailVerificationController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user()->load(['posts', 'comments', 'likes']);
@@ -18,6 +21,12 @@ Route::get('/user', function (Request $request) {
 // Authentication routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
+Route::post('/reset-password', [PasswordResetController::class, 'reset']);
+
+// Email verification routes
+Route::post('/email/send-otp', [EmailVerificationController::class, 'sendOtp']);
+Route::post('/email/verify-otp', [EmailVerificationController::class, 'verifyOtp']);
 
 // Public routes
 Route::get('/posts', [PostController::class, 'getAllPosts']);
@@ -51,9 +60,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // // Comments
-     Route::post('/posts/{post:slug}/comments', [CommentController::class, 'createComment']);
-     Route::delete('/comments/{comment}', [CommentController::class, 'deleteComment']);
-   
+    Route::post('/posts/{post:slug}/comments', [CommentController::class, 'createComment']);
+    Route::delete('/comments/{comment}', [CommentController::class, 'deleteComment']);
+
 
     // Likes
     Route::post('/posts/{post:id}/like', [LikeController::class, 'likePost']);

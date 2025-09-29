@@ -7,8 +7,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens;
@@ -52,6 +54,14 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
         ];
+    }
+
+
+
+    public function sendPasswordResetNotification($token)
+    {
+        $url = config('app.frontend_url') . "/reset-password?token=$token&email=" . urlencode($this->email);
+        $this->notify(new \App\Notifications\CustomResetPasswordNotification($token, $url));
     }
 
     public function posts()
