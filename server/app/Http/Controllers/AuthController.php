@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\PasswordOtp;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -27,14 +29,23 @@ class AuthController extends Controller
                 'id' => (string) Str::uuid(),
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'password' => $validated['password'],
+                'password' => Hash::make($validated['password']),
             ]);
+
+            // Send OTP for email verification
+            $otp = random_int(100000, 999999);
+            $expiresAt = Carbon::now()->addMinutes(10);
+            PasswordOtp::updateOrCreate(
+                ['email' => $user->email],
+                ['otp' => $otp, 'expires_at' => $expiresAt]
+            );
+            $user->notify(new \App\Notifications\OtpEmailVerificationNotification($otp));
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([
                 'success' => true,
-                'message' => 'User registered successfully',
+                'message' => 'User registered successfully. OTP sent to email for verification.',
                 'data' => [
                     'user' => $user,
                     'token' => $token
@@ -44,47 +55,47 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Registration failed: ' . $e->getMessage()
-            ], 500); 
-        }
-    }
-
-    // Login existing user
-    public function login(Request $request)
-    {
-        try {
-            $request->validate([
-                'email'    => 'required|string|email',
-                'password' => 'required|string',
-            ]);
-
-            $user = User::where('email', $request->email)->first();
-
-            if (! $user || ! Hash::check($request->password, $user->password)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid credentials',
-                    'errors' => [
-                        'email' => ['The credentials are incorrect.']
-                    ]
-                ], 422); 
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Login successful',
-                'data' => [
-                    'user'  => $user,
-                    'token' => $user->createToken($user->name)->plainTextToken,
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Login failed: ' . $e->getMessage()
             ], 500);
         }
     }
 
+
+
+    public function login(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials'
+            ], 401);
+        }
+
+        // Optional: Check if email is verified
+        if (!$user->email_verified_at) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please verify your email before logging in.'
+            ], 403);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'data' => [
+                'user' => $user,
+                'token' => $token
+            ]
+        ]);
+    }
     // Logout current user
     public function logout(Request $request)
     {
@@ -108,7 +119,7 @@ class AuthController extends Controller
         // dd($request->all());
         try {
             $user_id = $request->input('user_id');
-           
+
             $user = User::with([
                 'posts',
                 'comments',
@@ -129,8 +140,9 @@ class AuthController extends Controller
         }
     }
 
+    // Removed stray if block
     public function updateProfile(Request $request)
-    {       
+    {
         // dd($request->all());
         try {
             $user = $request->user();
@@ -138,7 +150,7 @@ class AuthController extends Controller
             // Validate the request
             $request->validate([
                 'name' => 'nullable|string|max:255',
-                'email' => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
+                'email' => "nullable|string|email|max:255|unique:users,email,{$user->id}",
                 'phone' => 'nullable|string|max:255',
                 'location' => 'nullable|string|max:255',
                 'bio' => 'nullable|string|max:1000',
@@ -149,11 +161,11 @@ class AuthController extends Controller
             if ($request->has('name')) {
                 $user->name = $request->name;
             }
-         
+
             if ($request->has('email')) {
                 $user->email = $request->email;
             }
-           
+
             if ($request->has('phone')) {
                 $user->phone = $request->phone;
             }
@@ -241,7 +253,7 @@ class AuthController extends Controller
                     'errors' => [
                         'current_password' => ['Current password is incorrect']
                     ]
-                ], 422); 
+                ], 422);
             }
 
             // Update password
@@ -264,13 +276,13 @@ class AuthController extends Controller
     {
         try {
             $user = $request->user();
-            
+
             $user->posts()->delete();
 
             $user->comments()->delete();
 
             $user->likes()->delete();
-            
+
             if ($user->profile_image) {
                 $profileImagePath = str_replace('/storage/', '', $user->profile_image);
                 if (Storage::disk('public')->exists($profileImagePath)) {

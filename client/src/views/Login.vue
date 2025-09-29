@@ -81,6 +81,14 @@
             <!-- Links -->
             <div class="text-center">
               <p class="mb-2">
+                <router-link
+                  :to="{ name: 'ForgotPassword' }"
+                  class="text-decoration-none"
+                >
+                  Forgot Password?
+                </router-link>
+              </p>
+              <p class="mb-2">
                 Don't have an account?
                 <router-link
                   :to="{ name: 'Register' }"
@@ -155,7 +163,7 @@ export default {
           if (result.errors) {
             this.errors = result.errors;
           }
-        } 
+        }
       } catch (error) {
         console.error("Login error:", error);
         this.error = "An unexpected error occurred. Please try again.";

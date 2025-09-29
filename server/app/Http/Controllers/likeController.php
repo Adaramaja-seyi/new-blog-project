@@ -7,6 +7,7 @@ use App\Models\Post;
 use App\Models\Comment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Events\PostLiked;
 
 class LikeController extends Controller
 {
@@ -34,6 +35,9 @@ class LikeController extends Controller
                 'post_id' => $post->id,
                 'user_id' => $userId
             ]);
+
+            // Dispatch event for notification
+            event(new PostLiked($post, Auth::user(), now()));
 
             $likesCount = $post->likes()->count();
             return response()->json([
@@ -121,6 +125,4 @@ class LikeController extends Controller
     /**
      * Get likes for a post
      */
-  
-
 }
